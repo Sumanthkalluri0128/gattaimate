@@ -58,6 +58,7 @@ h1 span { color: #a99aff; }
 .file-row { display: flex; align-items: center; gap: 12px; padding: 11px; border: 1px solid rgba(255,255,255,.07); border-radius: 11px; background: #151522; min-width: 0; }
 .pdf-icon { width: 37px; height: 42px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 8px; background: #ed7e8b12; color: #f49ca6; }
 .pdf-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+.pdf-icon.image-icon { background: #73d8b212; color: #73d8b2; }
 .file-info { min-width: 0; flex: 1; }
 .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
 .file-meta { color: #8e8ea5; font-size: 10px; margin-top: 5px; }

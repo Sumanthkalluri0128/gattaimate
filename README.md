@@ -81,3 +81,27 @@ Direct APK installation is suitable for testers. Google Play distribution has se
 - Split, rotate and remove pages
 - Progress/cancellation for large jobs (true cancellation requires a worker/streaming design)
 - Localization, analytics that exclude document contents, privacy policy and accessibility audit
+
+
+## Output filename behavior
+When the first PDF(s) are selected, the suggested output name becomes `<first-pdf-name>-merged.pdf`. The name remains editable. Once the user edits it, adding more files will not overwrite their chosen name.
+
+## Baby steps: create an Android APK
+1. Open Terminal in VS Code at the repository root.
+2. Run `npm install` if you have not already done so.
+3. Move to the mobile app: `cd apps/mobile`.
+4. Sign up or sign in at https://expo.dev/.
+5. Run `npx eas-cli login` and follow the browser/login instructions.
+6. Run `npx eas-cli build:configure` if EAS has not been configured yet.
+7. Start a preview APK build: `npx eas-cli build --platform android --profile preview`.
+8. If asked to create an Android keystore, allow EAS to generate and manage it for this test build.
+9. Wait for the build to finish, then open the build URL on your Android phone and download/install the APK. You may need to allow installation from your browser for this APK.
+10. For future code changes, create a new APK build; Vercel only updates the website.
+
+
+## Combine images with PDFs
+GattaiMate supports PDF, JPG, JPEG, and PNG inputs on web and Android. Each image is converted into one A4 PDF page, centered and scaled to fit while preserving its aspect ratio. Items are combined in the order shown in the workspace. Processing stays on the device/browser; no backend is needed.
+
+
+## Convert images to PDF and merge
+GattaiMate supports PDF, JPG, JPEG, and PNG inputs in both the web and Android apps. Each selected image becomes one A4 PDF page, preserving its aspect ratio. You can combine images and PDFs in any order, or select a single image to create a one-page PDF. The suggested output filename is based on the first selected file and remains editable. Processing is local; no backend is required.

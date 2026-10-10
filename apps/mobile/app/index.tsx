@@ -15,7 +15,7 @@ import * as Sharing from "expo-sharing";
 import { fromByteArray, toByteArray } from "base64-js";
 import { mergePdfBuffers } from "@gattaimate/pdf-core";
 
-type PickedPdf = { id: string; name: string; uri: string; size?: number };
+type PickedFile = { id: string; name: string; uri: string; size?: number; mimeType?: string | null };
 
 const formatBytes = (bytes?: number) => {
   if (!bytes) return "PDF document";
@@ -24,41 +24,50 @@ const formatBytes = (bytes?: number) => {
 };
 
 export default function HomeScreen() {
-  const [files, setFiles] = useState<PickedPdf[]>([]);
+  const [files, setFiles] = useState<PickedFile[]>([]);
   const [outputName, setOutputName] = useState("gattaimate-merged.pdf");
+  const [outputNameEdited, setOutputNameEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("Your documents stay on this device.");
 
   const totalSize = useMemo(() => files.reduce((sum, file) => sum + (file.size ?? 0), 0), [files]);
 
-  async function pickPdfs() {
+  async function pickFiles() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: "application/pdf",
+        type: ["application/pdf", "image/jpeg", "image/png"],
         multiple: true,
         copyToCacheDirectory: true
       });
       if (result.canceled) return;
 
-      const newFiles: PickedPdf[] = result.assets
-        .filter((asset) => asset.name.toLowerCase().endsWith(".pdf") || asset.mimeType === "application/pdf")
+      const newFiles: PickedFile[] = result.assets
+        .filter((asset) => {
+          const name = asset.name.toLowerCase();
+          return /\.(pdf|jpe?g|png)$/.test(name) || ["application/pdf", "image/jpeg", "image/png"].includes(asset.mimeType ?? "");
+        })
         .map((asset) => ({
           id: `${asset.uri}-${asset.name}`,
           name: asset.name,
           uri: asset.uri,
-          size: asset.size
+          size: asset.size,
+          mimeType: asset.mimeType
         }));
 
       if (newFiles.length === 0) {
-        setStatus("No PDF files were selected. Please choose PDF documents.");
+        setStatus("No supported files selected. Choose PDF, JPG, JPEG, or PNG files.");
         return;
       }
 
+      if (newFiles.length > 0 && files.length === 0 && !outputNameEdited) {
+        const firstBaseName = newFiles[0].name.replace(/\.(pdf|jpe?g|png)$/i, "").trim();
+        setOutputName(`${firstBaseName || "gattaimate"}-merged.pdf`);
+      }
       setFiles((current) => {
         const seen = new Set(current.map((file) => file.uri));
         return [...current, ...newFiles.filter((file) => !seen.has(file.uri))];
       });
-      setStatus(`${newFiles.length} PDF file(s) added.`);
+      setStatus(`${newFiles.length} PDF/image file(s) added.`);
     } catch {
       setStatus("Could not open the document picker. Please try again.");
     }
@@ -76,12 +85,12 @@ export default function HomeScreen() {
 
   async function merge() {
     if (files.length < 2) {
-      setStatus("Please select at least two PDF files.");
+      setStatus("Please select at least one PDF or image file.");
       return;
     }
 
     setBusy(true);
-    setStatus("Reading and merging your PDFs…");
+    setStatus("Converting images and creating your PDF…");
     try {
       const inputs = await Promise.all(files.map(async (file) => {
         const base64 = await FileSystem.readAsStringAsync(file.uri, {
@@ -128,7 +137,7 @@ export default function HomeScreen() {
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>YOUR DOCUMENTS, TOGETHER</Text>
         <Text style={styles.title}>One file.{`\n`}<Text style={styles.titleAccent}>All in harmony.</Text></Text>
-        <Text style={styles.subtitle}>Merge PDFs on your phone. Your documents stay on your device.</Text>
+        <Text style={styles.subtitle}>Convert JPG/PNG images to PDF and combine them with PDFs. Everything stays on your device.</Text>
       </View>
 
       <View style={styles.sectionHeader}>
@@ -136,10 +145,10 @@ export default function HomeScreen() {
         <Text style={styles.count}>{files.length} files</Text>
       </View>
 
-      <Pressable style={styles.pickCard} onPress={() => void pickPdfs()}>
+      <Pressable style={styles.pickCard} onPress={() => void pickFiles()}>
         <View style={styles.uploadBadge}><Text style={styles.uploadGlyph}>↑</Text></View>
-        <Text style={styles.pickTitle}>Choose PDF files</Text>
-        <Text style={styles.muted}>Select one or more documents</Text>
+        <Text style={styles.pickTitle}>Choose PDFs & images</Text>
+        <Text style={styles.muted}>PDF, JPG, JPEG, or PNG · Images become PDF pages</Text>
         <View style={styles.pickButton}><Text style={styles.pickButtonText}>Browse documents  +</Text></View>
       </Pressable>
 
@@ -147,11 +156,11 @@ export default function HomeScreen() {
         <View style={styles.filePanel}>
           <View style={styles.filePanelHeader}>
             <Text style={styles.panelTitle}>Selected documents</Text>
-            <Pressable onPress={() => { setFiles([]); setStatus("Selection cleared."); }}><Text style={styles.clearText}>Clear all</Text></Pressable>
+            <Pressable onPress={() => { setFiles([]); setStatus("Selection cleared."); if (!outputNameEdited) setOutputName("gattaimate-merged.pdf"); }}><Text style={styles.clearText}>Clear all</Text></Pressable>
           </View>
           {files.map((file, index) => (
             <View style={styles.fileRow} key={file.id}>
-              <View style={styles.pdfBadge}><Text style={styles.pdfBadgeText}>PDF</Text></View>
+              <View style={[styles.pdfBadge, /\.(jpe?g|png)$/i.test(file.name) && styles.imageBadge]}><Text style={styles.pdfBadgeText}>{/\.(jpe?g|png)$/i.test(file.name) ? "IMG" : "PDF"}</Text></View>
               <View style={styles.fileDetails}>
                 <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
                 <Text style={styles.fileMeta}>{formatBytes(file.size)}</Text>
@@ -164,7 +173,7 @@ export default function HomeScreen() {
               </View>
             </View>
           ))}
-          <Pressable style={styles.addMore} onPress={() => void pickPdfs()}><Text style={styles.addMoreText}>+ Add more PDFs</Text></Pressable>
+          <Pressable style={styles.addMore} onPress={() => void pickFiles()}><Text style={styles.addMoreText}>+ Add more PDFs or images</Text></Pressable>
         </View>
       )}
 
@@ -172,10 +181,10 @@ export default function HomeScreen() {
         <Text style={styles.panelTitle}>Create your merged PDF</Text>
         <Text style={styles.muted}>Original documents will not be changed.</Text>
         <Text style={styles.inputLabel}>OUTPUT FILE NAME</Text>
-        <TextInput value={outputName} onChangeText={setOutputName} style={styles.input} autoCapitalize="none" maxLength={100} />
+        <TextInput value={outputName} onChangeText={(value) => { setOutputName(value); setOutputNameEdited(true); }} style={styles.input} autoCapitalize="none" maxLength={100} />
         <View style={styles.summary}><Text style={styles.summaryText}>{files.length} files</Text><Text style={styles.summaryText}>{formatBytes(totalSize)}</Text></View>
-        <Pressable disabled={busy || files.length < 2} style={[styles.mergeButton, (busy || files.length < 2) && styles.disabled]} onPress={() => void merge()}>
-          {busy ? <ActivityIndicator color="#171326" /> : <Text style={styles.mergeButtonText}>Merge PDFs  ↗</Text>}
+        <Pressable disabled={busy || files.length < 1} style={[styles.mergeButton, (busy || files.length < 1) && styles.disabled]} onPress={() => void merge()}>
+          {busy ? <ActivityIndicator color="#171326" /> : <Text style={styles.mergeButtonText}>Create PDF  ↗</Text>}
         </Pressable>
         <Text style={styles.privacyNote}>✓  Processed locally · No account needed</Text>
       </View>
@@ -218,6 +227,7 @@ const styles = StyleSheet.create({
   fileRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#151522", borderWidth: 1, borderColor: "#FFFFFF0D", borderRadius: 10, padding: 9, marginBottom: 7 },
   pdfBadge: { width: 35, height: 39, backgroundColor: "#ED7E8B14", borderRadius: 7, alignItems: "center", justifyContent: "center" },
   pdfBadgeText: { color: "#F49CA6", fontSize: 9, fontWeight: "800" },
+  imageBadge: { backgroundColor: "#73D8B214" },
   fileDetails: { flex: 1, minWidth: 0 },
   fileName: { color: "#F0EFF9", fontSize: 11, fontWeight: "600" },
   fileMeta: { color: "#8E8EA5", fontSize: 10, marginTop: 5 },

@@ -9,9 +9,8 @@ async function makePdf(pageCount: number): Promise<Uint8Array> {
 }
 
 describe("pdf-core", () => {
-  it("requires at least two PDFs", () => {
-    expect(() => validatePdfInputs([{ name: "a.pdf", bytes: new Uint8Array([1]) }]))
-      .toThrow("at least two");
+  it("requires at least one PDF or image", () => {
+    expect(() => validatePdfInputs([])).toThrow("at least one");
   });
 
   it("merges files in order and reports total page count", async () => {
@@ -26,8 +25,41 @@ describe("pdf-core", () => {
     expect(merged.getPageCount()).toBe(3);
   });
 
-  it("rejects non-PDF file names", () => {
+  it("rejects unsupported file names", () => {
     expect(() => validatePdfInputs([{ name: "notes.txt", bytes: new Uint8Array([1]) }, { name: "b.pdf", bytes: new Uint8Array([1]) }]))
-      .toThrow("does not look like a PDF");
+      .toThrow("is not supported");
   });
+
+  it("converts a PNG image into a page and combines it with a PDF", async () => {
+    const pdf = await makePdf(1);
+    // Valid 1x1 transparent PNG.
+    const pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lWQAAAAASUVORK5CYII=";
+    const pngBytes = Uint8Array.from(atob(pngBase64), (char) => char.charCodeAt(0));
+    const result = await mergePdfBuffers([
+      { name: "document.pdf", bytes: pdf },
+      { name: "photo.png", bytes: pngBytes }
+    ]);
+    const merged = await PDFDocument.load(result.bytes);
+    expect(result.pageCount).toBe(2);
+    expect(merged.getPageCount()).toBe(2);
+  });
+
+  it("accepts JPG, JPEG, and PNG extensions during validation", () => {
+    expect(() => validatePdfInputs([
+      { name: "photo.jpg", bytes: new Uint8Array([1]) },
+      { name: "scan.jpeg", bytes: new Uint8Array([1]) },
+      { name: "page.png", bytes: new Uint8Array([1]) }
+    ])).not.toThrow();
+  });
+
+  it("converts a single PNG into a one-page PDF", async () => {
+    // Valid 1x1 transparent PNG.
+    const pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lWQAAAAASUVORK5CYII=";
+    const pngBytes = Uint8Array.from(atob(pngBase64), (char) => char.charCodeAt(0));
+    const result = await mergePdfBuffers([{ name: "photo.png", bytes: pngBytes }]);
+    const merged = await PDFDocument.load(result.bytes);
+    expect(result.pageCount).toBe(1);
+    expect(merged.getPageCount()).toBe(1);
+  });
+
 });

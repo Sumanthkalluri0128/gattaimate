@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { mergePdfBuffers } from "@gattaimate/pdf-core";
 
-type PdfItem = {
+type MergeItem = {
   id: string;
   file: File;
   pages?: number;
@@ -14,37 +14,48 @@ const formatBytes = (bytes: number) => {
 
 export default function App() {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [items, setItems] = useState<PdfItem[]>([]);
+  const [items, setItems] = useState<MergeItem[]>([]);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [outputName, setOutputName] = useState("gattaimate-merged.pdf");
+  const [outputNameEdited, setOutputNameEdited] = useState(false);
 
   const totalSize = useMemo(() => items.reduce((sum, item) => sum + item.file.size, 0), [items]);
   const totalPages = useMemo(() => items.reduce((sum, item) => sum + (item.pages ?? 0), 0), [items]);
 
   async function addFiles(fileList: FileList | File[]) {
-    const chosen = Array.from(fileList).filter((file) =>
-      file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
-    );
+    const chosen = Array.from(fileList).filter((file) => {
+      const name = file.name.toLowerCase();
+      return file.type === "application/pdf" || file.type === "image/jpeg" || file.type === "image/png" || /\.(pdf|jpe?g|png)$/.test(name);
+    });
     const rejected = fileList.length - chosen.length;
-    if (rejected) setMessage(`${rejected} non-PDF file(s) skipped.`);
+    if (rejected) setMessage(`${rejected} unsupported file(s) skipped. Choose PDF, JPG, JPEG, or PNG files.`);
     else setMessage("");
 
     const existing = new Set(items.map((item) => `${item.file.name}:${item.file.size}:${item.file.lastModified}`));
     const fresh = chosen.filter((file) => !existing.has(`${file.name}:${file.size}:${file.lastModified}`));
-    const newItems: PdfItem[] = fresh.map((file) => ({
+    const newItems: MergeItem[] = fresh.map((file) => ({
       id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
       file
     }));
+    if (newItems.length > 0 && items.length === 0 && !outputNameEdited) {
+      const firstBaseName = newItems[0].file.name.replace(/\.(pdf|jpe?g|png)$/i, "").trim();
+      setOutputName(`${firstBaseName || "gattaimate"}-merged.pdf`);
+    }
     setItems((current) => [...current, ...newItems]);
 
     // Page counts are useful metadata. Failure to read one file should not block selection.
     for (const item of newItems) {
       try {
-        const { PDFDocument } = await import("pdf-lib");
-        const doc = await PDFDocument.load(await item.file.arrayBuffer(), { updateMetadata: false });
-        setItems((current) => current.map((row) => row.id === item.id ? { ...row, pages: doc.getPageCount() } : row));
+        const lowerName = item.file.name.toLowerCase();
+        if (/\.(jpe?g|png)$/.test(lowerName) || item.file.type.startsWith("image/")) {
+          setItems((current) => current.map((row) => row.id === item.id ? { ...row, pages: 1 } : row));
+        } else {
+          const { PDFDocument } = await import("pdf-lib");
+          const doc = await PDFDocument.load(await item.file.arrayBuffer(), { updateMetadata: false });
+          setItems((current) => current.map((row) => row.id === item.id ? { ...row, pages: doc.getPageCount() } : row));
+        }
       } catch {
         setMessage(`Could not preview page count for "${item.file.name}". It may be encrypted or damaged.`);
       }
@@ -63,7 +74,7 @@ export default function App() {
 
   async function merge() {
     if (items.length < 2) {
-      setMessage("Add at least two PDF files to get started.");
+      setMessage("Add at least one PDF or image file to get started.");
       return;
     }
     setBusy(true);
@@ -113,8 +124,8 @@ export default function App() {
         <div className="workspace-heading">
           <div>
             <div className="section-kicker">WORKSPACE</div>
-            <h2>Merge your PDFs</h2>
-            <p>Arrange your files in the order you want them to appear.</p>
+            <h2>Combine PDFs & images</h2>
+            <p>Add PDFs and JPG/PNG images. Each image becomes a page in the final PDF.</p>
           </div>
           <div className="file-count">{items.length} {items.length === 1 ? "file" : "files"}</div>
         </div>
@@ -128,7 +139,7 @@ export default function App() {
           <input
             ref={inputRef}
             type="file"
-            accept="application/pdf,.pdf"
+            accept="application/pdf,.pdf,image/jpeg,image/png,.jpg,.jpeg,.png"
             multiple
             hidden
             onChange={(event) => {
@@ -137,10 +148,10 @@ export default function App() {
             }}
           />
           <div className="upload-icon"><UploadIcon /></div>
-          <h3>Drop your PDFs right here</h3>
+          <h3>Drop PDFs and images right here</h3>
           <p>or choose files from your device</p>
           <button className="button button-secondary" onClick={() => inputRef.current?.click()}>
-            <PlusIcon /> Choose PDF files
+            <PlusIcon /> Choose PDFs & images
           </button>
           <div className="dropzone-footnote"><ShieldIcon /> Files stay on your device · No account required</div>
         </div>
@@ -149,12 +160,12 @@ export default function App() {
           <div className="file-panel">
             <div className="file-panel-title">
               <div><h3>Your documents</h3><span>Use the arrows to set the final order.</span></div>
-              <button className="text-button" onClick={() => { setItems([]); setMessage(""); }}>Clear all</button>
+              <button className="text-button" onClick={() => { setItems([]); setMessage(""); if (!outputNameEdited) setOutputName("gattaimate-merged.pdf"); }}>Clear all</button>
             </div>
             <div className="file-list">
               {items.map((item, index) => (
                 <article className="file-row" key={item.id}>
-                  <div className="pdf-icon"><FileIcon /></div>
+                  <div className={`pdf-icon ${/\.(jpe?g|png)$/i.test(item.file.name) ? "image-icon" : ""}`}><FileIcon /></div>
                   <div className="file-info">
                     <div className="file-name" title={item.file.name}>{item.file.name}</div>
                     <div className="file-meta">{formatBytes(item.file.size)} <span>·</span> {item.pages === undefined ? "Reading pages…" : `${item.pages} ${item.pages === 1 ? "page" : "pages"}`}</div>
@@ -168,7 +179,7 @@ export default function App() {
                 </article>
               ))}
             </div>
-            <button className="add-more" onClick={() => inputRef.current?.click()}><PlusIcon /> Add more PDFs</button>
+            <button className="add-more" onClick={() => inputRef.current?.click()}><PlusIcon /> Add more PDFs or images</button>
           </div>
         )}
 
@@ -178,14 +189,14 @@ export default function App() {
             <div className="merge-copy"><h3>Ready to bring it all together?</h3><p>Your original files will remain untouched.</p></div>
           </div>
           <label className="output-label" htmlFor="output-name">OUTPUT FILE NAME</label>
-          <input id="output-name" className="output-input" value={outputName} onChange={(event) => setOutputName(event.target.value)} maxLength={100} />
+          <input id="output-name" className="output-input" value={outputName} onChange={(event) => { setOutputName(event.target.value); setOutputNameEdited(true); }} maxLength={100} />
           <div className="summary-line">
             <span>{items.length} files <i>·</i> {totalPages ? `${totalPages} pages detected` : "page count pending"}</span>
             <span>{formatBytes(totalSize)} total</span>
           </div>
-          <button className="button button-primary merge-button" disabled={busy || items.length < 2} onClick={() => void merge()}>
+          <button className="button button-primary merge-button" disabled={busy || items.length < 1} onClick={() => void merge()}>
             {busy ? <span className="spinner" /> : <MergeIcon />}
-            {busy ? "Merging your PDFs…" : "Merge PDFs"}
+            {busy ? "Creating your PDF…" : "Create PDF"}
             {!busy && <span className="button-arrow">↗</span>}
           </button>
           <div className="secure-note"><ShieldIcon /> Processed locally in your browser. Your documents are never uploaded.</div>
