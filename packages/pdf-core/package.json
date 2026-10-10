@@ -11,9 +11,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "vitest": "^3.2.4"
-  }
+  },
+  "sideEffects": false,
+  "description": "Shared, dependency-light PDF engine used by the GattaiMate web and mobile apps."
 }

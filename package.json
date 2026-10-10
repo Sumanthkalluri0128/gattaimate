@@ -2,11 +2,16 @@
   "name": "gattaimate",
   "private": true,
   "version": "1.0.0",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev:web": "npm run dev --workspace @gattaimate/web",
+    "dev:mobile": "npm run start --workspace @gattaimate/mobile",
     "build:web": "npm run build --workspace @gattaimate/web",
     "test:core": "npm run test --workspace @gattaimate/pdf-core",
-    "dev:mobile": "npm run start --workspace @gattaimate/mobile"
+    "typecheck": "npm run typecheck --workspace @gattaimate/web && npm run typecheck --workspace @gattaimate/mobile && tsc --noEmit -p packages/pdf-core",
+    "check": "npm run test:core && npm run typecheck && npm run build:web"
   }
 }
