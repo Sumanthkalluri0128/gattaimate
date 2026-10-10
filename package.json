@@ -1,0 +1,12 @@
+{
+  "name": "gattaimate",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:web": "npm run dev --workspace @gattaimate/web",
+    "build:web": "npm run build --workspace @gattaimate/web",
+    "test:core": "npm run test --workspace @gattaimate/pdf-core",
+    "dev:mobile": "npm run start --workspace @gattaimate/mobile"
+  }
+}

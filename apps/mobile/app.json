@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "GattaiMate",
+    "slug": "gattaimate",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "gattaimate",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.gattaimate.pdfmerger",
+      "adaptiveIcon": {
+        "backgroundColor": "#171526"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-document-picker"
+    ]
+  }
+}
