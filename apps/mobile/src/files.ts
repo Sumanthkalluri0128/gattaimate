@@ -52,3 +52,13 @@ export async function fileSize(uri: string): Promise<number> {
   const info = await FileSystem.getInfoAsync(uri);
   return info.exists && "size" in info ? info.size : 0;
 }
+
+/** Share an already-written file (e.g. image-manipulator output). Returns whether the share sheet opened. */
+export async function saveCopy(uri: string, mimeType: string, title: string): Promise<boolean> {
+  return (await shareUri(uri, mimeType, title)).shared;
+}
+
+/** Open a PDF in the phone's PDF viewer via the share sheet. */
+export async function openInViewer(uri: string, title: string): Promise<void> {
+  await shareUri(uri, "application/pdf", title);
+}

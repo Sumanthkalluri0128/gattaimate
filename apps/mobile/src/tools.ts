@@ -1,4 +1,4 @@
-export type ToolId = "merge" | "images" | "split" | "extract" | "rotate" | "optimize-pdf" | "optimize-image" | "preview";
+export type ToolId = "merge" | "images" | "split" | "extract" | "rotate" | "optimize-pdf" | "optimize-image";
 
 export type ToolDef = { id: ToolId; title: string; blurb: string; color: string; glyph: string };
 
@@ -10,8 +10,7 @@ export const TOOLS: readonly ToolDef[] = [
   { id: "extract", title: "Extract Pages", blurb: "Keep only what you need", color: "#FF9B43", glyph: "⎘" },
   { id: "rotate", title: "Rotate PDF", blurb: "Fix page orientation", color: "#18C995", glyph: "⟳" },
   { id: "optimize-pdf", title: "Optimize PDF", blurb: "Clean up a PDF", color: "#C15BFF", glyph: "⤢" },
-  { id: "optimize-image", title: "Optimize Image", blurb: "Compress & resize", color: "#ED49C4", glyph: "✦" },
-  { id: "preview", title: "Preview", blurb: "View PDFs and images", color: "#6084FF", glyph: "◉" }
+  { id: "optimize-image", title: "Optimize Image", blurb: "Compress & resize", color: "#ED49C4", glyph: "✦" }
 ];
 
 export const toolById = (id: string) => TOOLS.find((tool) => tool.id === id);

@@ -18,7 +18,7 @@ packages/pdf-core  Shared pdf-lib engine + helpers (tested with Vitest)
 | Rotate PDF | 90 / 180 / 270°, all pages or a range. |
 | Optimize PDF | *Keep text & links* (lossless rewrite, both platforms). *Smaller file* (web only) flattens pages to JPEG; it refuses to save if the result would be larger. |
 | Optimize Image | JPEG quality + max size; PNG transparency becomes white. |
-| Preview | Web: in-app viewer with zoom, paging, rotate and "save rotated copy". Android: images in-app; PDFs open in the phone's PDF viewer. |
+| Preview (inside every tool) | After choosing a file, press **Preview**. Web: viewer modal with zoom, paging, rotate and "save rotated copy". Android: images in-app (rotate + save), PDFs open in the phone's PDF viewer. Also available per file in Merge. |
 
 Recent files keep only names, sizes and times (localStorage on web, a small JSON file on Android) — never documents.
 

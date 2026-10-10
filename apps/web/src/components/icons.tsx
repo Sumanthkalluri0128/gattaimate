@@ -29,7 +29,6 @@ const TOOL_ICONS: Record<ToolId, (p: IconProps) => ReactNode> = {
   extract: (p) => <Svg {...p}><path d="M6 3.5h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" /><path d="M9 14.5h6M12 11.5v6" /></Svg>,
   rotate: (p) => <Svg {...p}><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5" /></Svg>,
   "optimize-pdf": (p) => <Svg {...p}><path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4" /><path d="M10 12h4" /></Svg>,
-  "optimize-image": (p) => <Svg {...p}><path d="M12 3v4m0 10v4M3 12h4m10 0h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></Svg>,
-  preview: (p) => <Svg {...p}><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="2.8" /></Svg>
+  "optimize-image": (p) => <Svg {...p}><path d="M12 3v4m0 10v4M3 12h4m10 0h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></Svg>
 };
 export const ToolIcon = ({ id, size }: { id: ToolId } & IconProps) => <>{TOOL_ICONS[id]({ size })}</>;

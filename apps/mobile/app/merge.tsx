@@ -4,7 +4,8 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import {
   baseName, formatBytes, getPdfPageCount, isImageName, isPdfName, mergePdfBuffers, withExtension, type Rotation
 } from "@gattaimate/pdf-core";
-import { pickFiles, readBytes, saveAndShare, type Picked } from "../src/files";
+import { openInViewer, pickFiles, readBytes, saveAndShare, type Picked } from "../src/files";
+import ImagePreview from "../src/ImagePreview";
 import { useRecent } from "../src/recent";
 import { colors } from "../src/theme";
 import { Badge, Btn, Card, Field, Heading, IconBtn, Notice, Screen, s, type NoticeState } from "../src/ui";
@@ -22,6 +23,7 @@ export default function MergeScreen() {
   const [nameEdited, setNameEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<NoticeState>(null);
+  const [previewFile, setPreviewFile] = useState<Picked | null>(null);
 
   const patch = (id: string, change: Partial<Item>) => setItems((cur) => cur.map((item) => (item.id === id ? { ...item, ...change } : item)));
 
@@ -100,6 +102,7 @@ export default function MergeScreen() {
                 </View>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
+                <Btn variant="ghost" small label="Preview" onPress={() => { if (isPdfName(item.name)) void openInViewer(item.uri, item.name); else setPreviewFile(item); }} />
                 <IconBtn label={`Rotate ${item.name} clockwise`} glyph="↻" onPress={() => patch(item.id, { rotation: ((item.rotation + 90) % 360) as Rotation })} />
                 <IconBtn label="Move up" glyph="↑" disabled={index === 0} onPress={() => move(index, index - 1)} />
                 <Text style={{ color: "#BCB4EC", minWidth: 16, textAlign: "center" }}>{index + 1}</Text>
@@ -122,6 +125,7 @@ export default function MergeScreen() {
         <Text style={[s.meta, { textAlign: "center" }]}>✓ Processed on this device · No account needed</Text>
       </Card>
       <Notice notice={notice} />
+      {previewFile && <ImagePreview file={previewFile} onClose={() => setPreviewFile(null)} />}
     </Screen>
   );
 }

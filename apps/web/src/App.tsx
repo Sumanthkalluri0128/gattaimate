@@ -12,7 +12,6 @@ const ExtractPage = lazy(() => import("./pages/ExtractPage"));
 const RotatePage = lazy(() => import("./pages/RotatePage"));
 const OptimizePdfPage = lazy(() => import("./pages/OptimizePdfPage"));
 const OptimizeImagePage = lazy(() => import("./pages/OptimizeImagePage"));
-const PreviewPage = lazy(() => import("./pages/PreviewPage"));
 const RecentPage = lazy(() => import("./pages/RecentPage"));
 
 const ROUTES: Record<string, { title: string; Page: ComponentType }> = {
@@ -24,7 +23,6 @@ const ROUTES: Record<string, { title: string; Page: ComponentType }> = {
   "/rotate": { title: "Rotate PDF", Page: RotatePage },
   "/optimize-pdf": { title: "Optimize PDF", Page: OptimizePdfPage },
   "/optimize-image": { title: "Optimize Image", Page: OptimizeImagePage },
-  "/preview": { title: "Preview", Page: PreviewPage },
   "/recent": { title: "Recent files", Page: RecentPage }
 };
 

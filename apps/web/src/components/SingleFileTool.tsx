@@ -1,9 +1,11 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { formatBytes, getPdfPageCount } from "@gattaimate/pdf-core";
 import { toolById, type ToolId } from "../tools";
 import { errorMessage, isImageFile, isPdfFile, readBytes } from "../lib/browser";
 import { useRecent } from "../hooks/useRecent";
 import Dropzone from "./Dropzone";
+import DocumentViewer from "./DocumentViewer";
+import Modal from "./Modal";
 import Notice, { type NoticeState } from "./Notice";
 import PageHeader from "./PageHeader";
 import { FileIcon } from "./icons";
@@ -43,6 +45,8 @@ export default function SingleFileTool({ id, accept, actionLabel, options, run }
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [notice, setNotice] = useState<NoticeState>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const closePreview = useCallback(() => setPreviewing(false), []);
 
   async function choose(files: File[]) {
     const valid = files.filter(spec.test);
@@ -107,6 +111,7 @@ export default function SingleFileTool({ id, accept, actionLabel, options, run }
                 {accept === "pdf" && !unreadable && <> · {pageCount === null ? "reading pages…" : `${pageCount} ${pageCount === 1 ? "page" : "pages"}`}</>}
               </div>
             </div>
+            <button className="btn btn-secondary btn-sm" disabled={busy || unreadable} onClick={() => setPreviewing(true)}>Preview</button>
             <button className="btn btn-ghost btn-sm" disabled={busy} onClick={reset}>Change file</button>
           </section>
 
@@ -123,6 +128,11 @@ export default function SingleFileTool({ id, accept, actionLabel, options, run }
         </>
       )}
       <Notice notice={notice} />
+      {previewing && file && (
+        <Modal title={file.name} onClose={closePreview}>
+          <DocumentViewer key={`${file.name}-${file.size}-${file.lastModified}`} file={file} />
+        </Modal>
+      )}
     </div>
   );
 }
