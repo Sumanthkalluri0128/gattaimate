@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,8 +14,9 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { fromByteArray, toByteArray } from "base64-js";
-import { mergePdfBuffers } from "@gattaimate/pdf-core";
+import { mergePdfBuffers, splitPdfByRanges, rotatePdfPages, extractPdfPages, optimizePdf } from "@gattaimate/pdf-core";
 
+type ToolMode = "split" | "rotate" | "extract" | "compress" | "preview" | null;
 type PickedFile = { id: string; name: string; uri: string; size?: number; mimeType?: string | null };
 
 const formatBytes = (bytes?: number) => {
@@ -29,6 +31,10 @@ export default function HomeScreen() {
   const [outputNameEdited, setOutputNameEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("Your documents stay on this device.");
+  const [recentFiles, setRecentFiles] = useState<{ name: string; pages: number; size: number; time: string }[]>([]);
+  const [activeTool, setActiveTool] = useState<ToolMode>(null);
+  const [pageRange, setPageRange] = useState("1-2,3-4");
+  const [rotation, setRotation] = useState<90 | 180 | 270>(90);
 
   const totalSize = useMemo(() => files.reduce((sum, file) => sum + (file.size ?? 0), 0), [files]);
 
@@ -83,6 +89,48 @@ export default function HomeScreen() {
     });
   }
 
+  async function sharePdf(bytes: Uint8Array, name: string) {
+    const safeName = name.replace(/[\\/:*?"<>|]/g, "_").replace(/\.pdf$/i, "") + ".pdf";
+    const uri = `${FileSystem.cacheDirectory}${safeName}`;
+    await FileSystem.writeAsStringAsync(uri, fromByteArray(bytes), { encoding: FileSystem.EncodingType.Base64 });
+    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: safeName, UTI: "com.adobe.pdf" });
+    else Alert.alert("PDF created", `Saved temporarily at ${uri}`);
+  }
+
+  async function runSelectedTool() {
+    if (!activeTool) return;
+    const file = files.find((item) => item.name.toLowerCase().endsWith(".pdf"));
+    if (!file) { setStatus("Choose a PDF first. This tool does not process image-only selections."); return; }
+    setBusy(true);
+    try {
+      const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const bytes = toByteArray(base64);
+      const base = file.name.replace(/\.pdf$/i, "");
+      if (activeTool === "split") {
+        const results = await splitPdfByRanges(bytes, pageRange);
+        for (let i = 0; i < results.length; i++) await sharePdf(results[i].bytes, `${base}-part-${i + 1}.pdf`);
+        setStatus(`Created ${results.length} PDF parts. Use the share sheet to save or send each part.`);
+      } else if (activeTool === "extract") {
+        const result = await extractPdfPages(bytes, pageRange);
+        await sharePdf(result.bytes, `${base}-pages.pdf`);
+        setStatus(`Extracted ${result.pageCount} page(s).`);
+      } else if (activeTool === "rotate") {
+        const result = await rotatePdfPages(bytes, rotation, pageRange.trim() || "all");
+        await sharePdf(result.bytes, `${base}-rotated.pdf`);
+        setStatus("Rotated PDF is ready to save or share.");
+      } else if (activeTool === "compress") {
+        const result = await optimizePdf(bytes);
+        await sharePdf(result.bytes, `${base}-optimized.pdf`);
+        setStatus("Structural optimization complete. This does not use lossy image compression, so some files may not shrink.");
+      } else if (activeTool === "preview") {
+        await sharePdf(bytes, `${base}-preview.pdf`);
+        setStatus("Choose a PDF viewer in the share sheet to preview this document.");
+      }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not process this PDF. It may be damaged or password-protected.");
+    } finally { setBusy(false); }
+  }
+
   async function merge() {
     if (files.length < 2) {
       setStatus("Please select at least one PDF or image file.");
@@ -114,6 +162,7 @@ export default function HomeScreen() {
           dialogTitle: "Share your merged PDF",
           UTI: "com.adobe.pdf"
         });
+        setRecentFiles((current) => [{ name: finalName, pages: result.pageCount, size: result.bytes.byteLength, time: "Just now" }, ...current].slice(0, 4));
         setStatus(`Merged ${files.length} files into ${result.pageCount} pages. Choose an app or destination in the share sheet.`);
       } else {
         setStatus(`Merged PDF saved temporarily at ${outputUri}. Sharing is not available on this device.`);
@@ -129,15 +178,65 @@ export default function HomeScreen() {
   return (
     <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.topbar}>
-        <View style={styles.brandMark}><Text style={styles.brandMarkText}>G</Text></View>
-        <Text style={styles.brand}>Gattai<Text style={styles.brandLight}>Mate</Text></Text>
+        <Image source={require("../assets/icon.png")} style={styles.brandImage} />
+        <View style={styles.brandBlock}><Text style={styles.brand}>Gattai<Text style={styles.brandLight}>Mate</Text></Text><Text style={styles.brandTagline}>All your documents. One powerful app.</Text></View>
         <View style={styles.privacyPill}><View style={styles.greenDot} /><Text style={styles.privacyText}>Private</Text></View>
       </View>
 
       <View style={styles.hero}>
-        <Text style={styles.eyebrow}>YOUR DOCUMENTS, TOGETHER</Text>
-        <Text style={styles.title}>One file.{`\n`}<Text style={styles.titleAccent}>All in harmony.</Text></Text>
-        <Text style={styles.subtitle}>Convert JPG/PNG images to PDF and combine them with PDFs. Everything stays on your device.</Text>
+        <Text style={styles.eyebrow}>FAST · PRIVATE · OFFLINE</Text>
+        <Text style={styles.title}>Complete{`\n`}<Text style={styles.titleAccent}>PDF Toolkit</Text></Text>
+        <Text style={styles.subtitle}>Merge, convert and organize documents. Your files stay on your device.</Text>
+      </View>
+
+      <View style={styles.toolSection}>
+        <Text style={styles.sectionTitle}>Your document toolkit</Text>
+        <Text style={styles.muted}>Fast · Private · All in one place</Text>
+        <View style={styles.toolGrid}>
+          {[
+            { title: "Merge PDF", glyph: "▤", color: "#FF477E", active: true },
+            { title: "Images to PDF", glyph: "▧", color: "#279BFF", active: true },
+            { title: "Split PDF", glyph: "✂", color: "#A75BFF", active: true, mode: "split" as const },
+            { title: "Rotate PDF", glyph: "⟳", color: "#18C995", active: true, mode: "rotate" as const },
+            { title: "Extract Pages", glyph: "▤", color: "#FF9B43", active: true, mode: "extract" as const },
+            { title: "Optimize PDF", glyph: "⤢", color: "#A75BFF", active: true, mode: "compress" as const },
+            { title: "Organize Pages", glyph: "▦", color: "#ED49C4", active: true, mode: "organize" as const },
+            { title: "Preview PDF", glyph: "◉", color: "#6084FF", active: true, mode: "preview" as const }
+          ].map((tool) => (
+            <Pressable key={tool.title} style={[styles.toolCard, { borderColor: `${tool.color}55` }]} onPress={() => {
+              if (tool.mode === "organize") { void pickFiles(); setStatus("Use the up/down controls in the selected file list to organize files before merging."); }
+              else { setActiveTool(tool.mode); setPageRange(tool.mode === "split" ? "1-2,3-4" : tool.mode === "extract" ? "1-3" : "all"); setStatus(tool.mode === "preview" ? "Choose a PDF, then tap Open / Share PDF to preview it." : "Choose a PDF, configure the options below, then run the tool."); }
+            }}>
+              <View style={[styles.toolGlyphBox, { backgroundColor: `${tool.color}25` }]}><Text style={[styles.toolGlyph, { color: tool.color }]}>{tool.glyph}</Text></View>
+              <Text style={styles.toolTitle}>{tool.title}</Text>
+              <Text style={styles.toolHint}>Open tool</Text>
+            </Pressable>
+          ))}
+        </View>
+        <View style={styles.privacyBanner}><Text style={styles.privacyShield}>◆</Text><View style={{ flex: 1 }}><Text style={styles.privacyBannerTitle}>100% private by design</Text><Text style={styles.privacyBannerText}>Processing happens on your device. No files are uploaded.</Text></View></View>
+      </View>
+
+      {activeTool && (
+        <View style={styles.mergePanel}>
+          <View style={styles.sectionHeader}><Text style={styles.panelTitle}>{({ split: "Split PDF", rotate: "Rotate PDF", extract: "Extract Pages", compress: "Optimize PDF", preview: "Preview PDF" } as const)[activeTool]}</Text><Pressable onPress={() => setActiveTool(null)}><Text style={styles.clearText}>Close</Text></Pressable></View>
+          <Text style={styles.muted}>Uses the first selected PDF. Select a PDF below if you have not already.</Text>
+          {(activeTool === "split" || activeTool === "extract" || activeTool === "rotate") && <><Text style={styles.inputLabel}>{activeTool === "split" ? "PAGE GROUPS (example: 1-2,3-5)" : activeTool === "extract" ? "PAGES TO KEEP (example: 1-3,5)" : "PAGES TO ROTATE (all or 1-3)"}</Text><TextInput value={pageRange} onChangeText={setPageRange} style={styles.input} autoCapitalize="none" /></>}
+          {activeTool === "rotate" && <><Text style={styles.inputLabel}>ROTATION</Text><View style={styles.controls}>{([90, 180, 270] as const).map((deg) => <Pressable key={deg} onPress={() => setRotation(deg)} style={[styles.controlButton, rotation === deg && styles.selectedControl]}><Text style={styles.controlText}>{deg}°</Text></Pressable>)}</View></>}
+          {activeTool === "compress" && <Text style={styles.muted}>Structural optimization only; no lossy image compression. The output may not always be smaller.</Text>}
+          <Pressable disabled={busy} style={[styles.mergeButton, busy && styles.disabled]} onPress={() => void runSelectedTool()}>{busy ? <ActivityIndicator color="#171326" /> : <Text style={styles.mergeButtonText}>{activeTool === "preview" ? "Open / Share PDF" : "Process PDF"}</Text>}</Pressable>
+        </View>
+      )}
+
+      <View style={styles.recentSection}>
+        <View style={styles.sectionHeader}>
+          <View><Text style={styles.sectionTitle}>Recent files</Text><Text style={styles.muted}>History stays on this device</Text></View>
+          <Text style={styles.count}>{recentFiles.length} recent</Text>
+        </View>
+        {recentFiles.length === 0 ? (
+          <View style={styles.recentEmpty}><Text style={styles.recentClock}>◷</Text><View style={{ flex: 1 }}><Text style={styles.recentTitle}>Your PDFs will appear here</Text><Text style={styles.muted}>Create a PDF to start your local history.</Text></View></View>
+        ) : recentFiles.map((recent, index) => (
+          <View style={styles.recentRow} key={`${recent.name}-${index}`}><View style={styles.recentPdf}><Text style={styles.pdfBadgeText}>PDF</Text></View><View style={{ flex: 1 }}><Text style={styles.recentTitle} numberOfLines={1}>{recent.name}</Text><Text style={styles.muted}>{recent.pages} pages · {formatBytes(recent.size)} · {recent.time}</Text></View></View>
+        ))}
       </View>
 
       <View style={styles.sectionHeader}>
@@ -232,6 +331,7 @@ const styles = StyleSheet.create({
   fileName: { color: "#F0EFF9", fontSize: 11, fontWeight: "600" },
   fileMeta: { color: "#8E8EA5", fontSize: 10, marginTop: 5 },
   controls: { flexDirection: "row", alignItems: "center", gap: 4 },
+  selectedControl: { backgroundColor: "#A998FF55", borderColor: "#A998FF" },
   controlButton: { width: 23, height: 25, borderRadius: 6, borderWidth: 1, borderColor: "#39364F", backgroundColor: "#211F31", alignItems: "center", justifyContent: "center" },
   controlText: { color: "#E0DCF8", fontSize: 12 },
   orderNumber: { color: "#BCB4EC", fontSize: 10, minWidth: 12, textAlign: "center" },
@@ -249,5 +349,25 @@ const styles = StyleSheet.create({
   privacyNote: { textAlign: "center", color: "#8F8DA6", fontSize: 10, marginTop: 13 },
   statusBox: { borderWidth: 1, borderColor: "#FFFFFF12", borderRadius: 10, padding: 12, marginTop: 13, backgroundColor: "#FFFFFF05" },
   statusText: { color: "#C7C4D9", fontSize: 11, lineHeight: 16 },
-  footer: { color: "#77778D", fontSize: 10, textAlign: "center", marginTop: 28 }
+  footer: { color: "#77778D", fontSize: 10, textAlign: "center", marginTop: 28 },
+  toolSection: { marginBottom: 22, marginTop: 4 },
+  toolGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9, marginTop: 13 },
+  toolCard: { width: "48%", flexGrow: 1, minHeight: 112, borderWidth: 1, borderRadius: 14, padding: 12, backgroundColor: "#151629", overflow: "hidden" },
+  toolGlyphBox: { width: 38, height: 38, borderRadius: 11, alignItems: "center", justifyContent: "center", marginBottom: 10 },
+  toolGlyph: { fontSize: 23, fontWeight: "800" },
+  toolTitle: { color: "#F5F3FF", fontSize: 12, fontWeight: "800" },
+  toolHint: { color: "#9291AE", fontSize: 10, marginTop: 5 },
+  privacyBanner: { flexDirection: "row", alignItems: "center", gap: 11, borderRadius: 13, borderWidth: 1, borderColor: "#36D6B344", backgroundColor: "#12302E88", padding: 13, marginTop: 13 },
+  privacyShield: { color: "#51E0B4", fontSize: 22 },
+  privacyBannerTitle: { color: "#DDFBF1", fontSize: 12, fontWeight: "800", marginBottom: 4 },
+  privacyBannerText: { color: "#A3C8C0", fontSize: 10, lineHeight: 15 },
+  brandImage: { width: 38, height: 38, borderRadius: 11 },
+  brandBlock: { flex: 1, minWidth: 0 },
+  brandTagline: { color: "#9B9CB8", fontSize: 9, marginTop: 2 },
+  recentSection: { marginTop: 2, marginBottom: 22 },
+  recentEmpty: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 13, borderWidth: 1, borderColor: "#A998FF25", backgroundColor: "#111629" },
+  recentClock: { color: "#B69CFF", fontSize: 25 },
+  recentTitle: { color: "#F5F3FF", fontSize: 11, fontWeight: "700", marginBottom: 4 },
+  recentRow: { flexDirection: "row", alignItems: "center", gap: 11, padding: 11, borderRadius: 11, borderWidth: 1, borderColor: "#FFFFFF10", backgroundColor: "#111629", marginBottom: 7 },
+  recentPdf: { width: 34, height: 39, borderRadius: 8, backgroundColor: "#FF477E20", alignItems: "center", justifyContent: "center" }
 });

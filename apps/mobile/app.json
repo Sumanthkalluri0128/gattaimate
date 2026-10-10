@@ -6,16 +6,22 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "gattaimate",
-    "newArchEnabled": true,
     "android": {
       "package": "com.gattaimate.pdfmerger",
       "adaptiveIcon": {
-        "backgroundColor": "#171526"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0B1E"
       }
     },
     "plugins": [
       "expo-router",
       "expo-document-picker"
-    ]
+    ],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0B1E"
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PDFDocument } from "pdf-lib";
-import { mergePdfBuffers, validatePdfInputs } from "../src/index";
+import { mergePdfBuffers, validatePdfInputs, extractPdfPages, splitPdfByRanges, rotatePdfPages, optimizePdf, parsePageRanges } from "../src/index";
 
 async function makePdf(pageCount: number): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -60,6 +60,42 @@ describe("pdf-core", () => {
     const merged = await PDFDocument.load(result.bytes);
     expect(result.pageCount).toBe(1);
     expect(merged.getPageCount()).toBe(1);
+  });
+
+
+  it("parses page ranges in ascending unique order and rejects invalid pages", () => {
+    expect(parsePageRanges("3,1-2,2", 4)).toEqual([0, 1, 2]);
+    expect(() => parsePageRanges("1-8", 4)).toThrow("outside this document");
+  });
+
+  it("extracts selected pages into a new PDF", async () => {
+    const result = await extractPdfPages(await makePdf(5), "2-3,5");
+    expect(result.pageCount).toBe(3);
+    expect((await PDFDocument.load(result.bytes)).getPageCount()).toBe(3);
+  });
+
+  it("splits a PDF into separate page groups", async () => {
+    const results = await splitPdfByRanges(await makePdf(5), "1-2;3-5");
+    expect(results.map((item) => item.pageCount)).toEqual([2, 3]);
+  });
+
+  it("allows multiple non-contiguous pages within a split output group", async () => {
+    const results = await splitPdfByRanges(await makePdf(5), "1,3;2,4-5");
+    expect(results.map((item) => item.pageCount)).toEqual([2, 3]);
+  });
+
+  it("rotates selected pages without changing page count", async () => {
+    const result = await rotatePdfPages(await makePdf(3), 90, "2");
+    const doc = await PDFDocument.load(result.bytes);
+    expect(result.pageCount).toBe(3);
+    expect(doc.getPage(1).getRotation().angle).toBe(90);
+    expect(doc.getPage(0).getRotation().angle).toBe(0);
+  });
+
+  it("re-saves PDFs with structural optimization and keeps pages", async () => {
+    const result = await optimizePdf(await makePdf(2));
+    expect(result.pageCount).toBe(2);
+    expect((await PDFDocument.load(result.bytes)).getPageCount()).toBe(2);
   });
 
 });

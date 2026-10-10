@@ -105,3 +105,12 @@ GattaiMate supports PDF, JPG, JPEG, and PNG inputs on web and Android. Each imag
 
 ## Convert images to PDF and merge
 GattaiMate supports PDF, JPG, JPEG, and PNG inputs in both the web and Android apps. Each selected image becomes one A4 PDF page, preserving its aspect ratio. You can combine images and PDFs in any order, or select a single image to create a one-page PDF. The suggested output filename is based on the first selected file and remains editable. Processing is local; no backend is required.
+
+
+## Document editing and optimization updates
+
+- Split PDF lets you choose the exact source PDF. Separate output groups with semicolons (for example `1-2;3-5;6`); commas inside a group select multiple pages (for example `1,3;2,4-5`). Legacy comma-only groups remain supported.
+- Optimize PDF renders pages and recompresses them as JPEG at a selectable quality. This can reduce file size but rasterizes pages, so selectable text, links, forms, and vector quality are not preserved in the optimized copy. Keep the original when those matter.
+- Optimize Image exports JPG/JPEG/PNG selections as compressed JPG, optionally downscaling images larger than 2400 px. PNG transparency is flattened to white.
+- Every uploaded file has Open and Rotate controls. Rotation produces a new file and leaves the original untouched.
+- PDF/image work is performed locally in the browser.
