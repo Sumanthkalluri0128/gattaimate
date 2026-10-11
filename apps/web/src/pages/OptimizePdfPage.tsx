@@ -48,7 +48,7 @@ export default function OptimizePdfPage() {
         }
         const name = withExtension(`${baseName(file.name)}-optimized`, ".pdf");
         const size = downloadBytes(output.bytes, name);
-        return { message: `Saved ${name}: ${formatBytes(file.size)} → ${formatBytes(size)} (${change(file.size, size)}).`, name, size, pages: output.pageCount };
+        return { message: `Saved ${name}: ${formatBytes(file.size)} → ${formatBytes(size)} (${change(file.size, size)}).`, name, size, pages: output.pageCount, before: file.size };
       }}
     />
   );

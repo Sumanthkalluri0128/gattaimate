@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@pdfsmaller/pdf-encrypt-lite": "^1.2.0",
     "fflate": "^0.8.3",
     "pdf-lib": "^1.17.1"
   },

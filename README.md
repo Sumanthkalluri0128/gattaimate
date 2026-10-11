@@ -1,51 +1,63 @@
 # GattaiMate — private PDF toolkit
 
-Merge PDFs, turn photos into PDFs, split, extract, rotate and optimize documents. Everything runs on the user's device — no backend, no uploads.
+Merge, scan, sign, redact, organize and optimize documents. Everything runs on the user's device — no backend, no uploads.
 
 ```
-apps/web         React + Vite web app (hash-routed pages, code-split)
-apps/mobile      Expo / React Native Android app (expo-router screens)
+apps/web           React + Vite web app / installable offline PWA (hash-routed, code-split)
+apps/mobile        Expo / React Native Android app (expo-router screens)
 packages/pdf-core  Shared pdf-lib engine + helpers (tested with Vitest)
 ```
 
-## Tools (web and mobile)
+## Tools
 
-| Tool | What it does |
-| --- | --- |
-| Merge PDF / Images to PDF | Combine PDFs and JPG/PNG in any order (drag or arrows), rotate any file, a single image is fine. Phone photos are auto-oriented from EXIF; landscape images get landscape A4 pages. |
-| Split PDF | Custom groups (`1-2;3-5;6`, `1,3;2,4-5`) or every N pages. Output is one ZIP. |
-| Extract Pages | Keep selected pages (`1-3,5`). |
-| Rotate PDF | 90 / 180 / 270°, all pages or a range. |
-| Optimize PDF | *Keep text & links* (lossless rewrite, both platforms). *Smaller file* (web only) flattens pages to JPEG; it refuses to save if the result would be larger. |
-| Optimize Image | JPEG quality + max size; PNG transparency becomes white. |
-| Preview (inside every tool) | After choosing a file, press **Preview**. Web: viewer modal with zoom, paging, rotate and "save rotated copy". Android: images in-app (rotate + save), PDFs open in the phone's PDF viewer. Also available per file in Merge. |
+| Tool | Web | Android | Notes |
+| --- | :-: | :-: | --- |
+| Merge PDF / Images to PDF | ✅ | ✅ | Drag/arrow reorder, per-file rotate, single image OK, EXIF-aware photos |
+| **Scan to PDF** | – | ✅ | Camera → system crop → reorder/rotate → PDF (needs camera permission) |
+| Split · Extract · Rotate | ✅ | ✅ | Split by groups (`1-2;3-5`) or every N pages → ZIP |
+| **Organize Pages** | ✅ thumbnails + drag | ✅ list | Reorder, delete, duplicate, rotate pages |
+| **Numbers & Watermark** | ✅ | ✅ | Position, style, start number, diagonal text stamp |
+| **Sign PDF** | ✅ draw / type / upload, click to place | ✅ type / image, position presets | Visual signature (not a certificate signature) |
+| **Fill Form** | ✅ | ✅ | Text, checkbox, dropdown, radio; optional flatten |
+| **Redact** | ✅ | – | Draw boxes; those pages are flattened so text is truly removed |
+| Optimize PDF | ✅ lossless + “Smaller file” | ✅ lossless | Before/after size bars; never saves a bigger file |
+| Optimize Image | ✅ | ✅ | JPEG quality + max size |
+| **PDF to Images** | ✅ | – | JPG/PNG, 72–300 dpi, page range → ZIP |
+| **Protect / Unlock** | ✅ both | ✅ protect only | Protect = RC4-128 (light deterrent). Unlock needs the password (qpdf-wasm, web only) |
+| **Presets & Batch** | ✅ | ✅ | Built-in + custom recipes on many PDFs → ZIP. “Shrink” step is web only |
+| Preview | ✅ in every tool | ✅ images in-app, PDFs via viewer | |
 
-Recent files keep only names, sizes and times (localStorage on web, a small JSON file on Android) — never documents.
+Web extras: light/dark theme, keyboard shortcuts (`?` lists them), installable + works offline.
+Android extras: *Share → GattaiMate* from any app opens a “what do you want to do” screen.
+
+Why some features are web-only: redact, PDF→images and “Smaller file” need to render PDF pages to a canvas, and unlock uses WebAssembly; React Native's engine has neither without extra native libraries.
 
 ## Commands (repo root)
 
 ```bash
 npm install
 npm run dev:web        # http://localhost:5173
-npm run dev:mobile     # Expo; scan the QR with Expo Go
+npm run dev:mobile     # Expo dev server
 npm run check          # core tests + typecheck (web, mobile, core) + web build
 ```
 
-If Expo reports a version mismatch: `cd apps/mobile && npx expo install --fix`, then `npx expo start -c`.
-
 ## Deploy the web app (Vercel)
-Root Directory: repository root · Install: `npm install` · Build: `npm run build:web` · Output: `apps/web/dist`. No environment variables.
+Root Directory: repository root · Install: `npm install` · Build: `npm run build:web` · Output: `apps/web/dist`. No environment variables. After the first visit the app can be installed and used offline.
 
-## Build an Android APK (EAS)
+## Android app (EAS build required)
+The app now uses native modules (`expo-share-intent`, `expo-image-picker`), so build an APK instead of relying on Expo Go:
+
 ```bash
 cd apps/mobile
 npx eas-cli login
 npx eas-cli build --platform android --profile preview
 ```
-Open the build URL on the phone to install. Web deploys do not update the APK; rebuild after mobile changes.
+In Expo Go everything still runs except *Share → GattaiMate* (it is skipped safely). If Expo reports a version mismatch: `npx expo install --fix`.
 
 ## Notes and limits
-- Password-protected PDFs are rejected with a clear message (no bypass). Merging drops digital signatures; forms/bookmarks need testing.
+- Password-protected PDFs are rejected with a clear message in every tool except Unlock. Merging drops digital signatures; check forms/bookmarks on your own files.
+- RC4-128 protection opens in every reader but is a light deterrent — use dedicated software for highly sensitive files.
+- Watermarks, page numbers and typed signatures use built-in PDF fonts: Latin text only.
+- pdf.js is loaded from its **legacy** build on purpose (the default build needs very new JavaScript and fails on many browsers).
 - Large PDFs use real RAM, especially on phones.
-- pdf.js is loaded from its **legacy** build on purpose: the default build needs very new JavaScript (`Map.prototype.getOrInsertComputed`) and fails on many current browsers.
-- The shared engine lives in `packages/pdf-core`; add new PDF operations there with a test, then call them from both apps.
+- New PDF operations belong in `packages/pdf-core` with a test; both apps call them.

@@ -9,13 +9,13 @@ export type PdfInput = { name: string; bytes: Uint8Array; rotation?: Rotation };
 export type MergeResult = { bytes: Uint8Array; pageCount: number };
 export type JpegPage = { bytes: Uint8Array; width: number; height: number };
 
-const SAVE_OPTIONS = { useObjectStreams: true } as const;
+export const SAVE_OPTIONS = { useObjectStreams: true } as const;
 const A4 = { width: 595.28, height: 841.89 }; // points (72 DPI)
 const IMAGE_MARGIN = 24;
 
 /* ---------------------------------------------------------------- helpers */
 
-async function loadPdf(bytes: Uint8Array, name = "This PDF"): Promise<PDFDocument> {
+export async function loadPdf(bytes: Uint8Array, name = "This PDF"): Promise<PDFDocument> {
   try {
     return await PDFDocument.load(bytes, { updateMetadata: false });
   } catch (error) {

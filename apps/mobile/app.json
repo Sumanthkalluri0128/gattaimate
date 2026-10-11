@@ -15,7 +15,26 @@
     },
     "plugins": [
       "expo-router",
-      "expo-document-picker"
+      "expo-document-picker",
+      [
+        "expo-share-intent",
+        {
+          "disableIOS": true,
+          "androidIntentFilters": [
+            "*/*"
+          ],
+          "androidMultiIntentFilters": [
+            "*/*"
+          ]
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "GattaiMate uses the camera to scan documents into PDFs.",
+          "photosPermission": "GattaiMate lets you pick photos to turn into PDFs."
+        }
+      ]
     ],
     "icon": "./assets/icon.png",
     "splash": {

@@ -1,10 +1,10 @@
-import { TOOLS } from "../tools";
+import { GROUPS, TOOLS } from "../tools";
 import { href } from "../router";
-import { ClockIcon, HomeIcon, ShieldIcon, ToolIcon } from "./icons";
+import { ClockIcon, DownloadIcon, HomeIcon, ShieldIcon, ToolIcon } from "./icons";
 
-type Props = { route: string; open: boolean; onNavigate: () => void };
+type Props = { route: string; open: boolean; onNavigate: () => void; canInstall: boolean; onInstall: () => void };
 
-export default function Sidebar({ route, open, onNavigate }: Props) {
+export default function Sidebar({ route, open, onNavigate, canInstall, onInstall }: Props) {
   const link = (path: string, label: string, icon: React.ReactNode, color?: string) => (
     <a
       key={path}
@@ -26,11 +26,16 @@ export default function Sidebar({ route, open, onNavigate }: Props) {
       </a>
       <nav>
         {link("/", "Home", <HomeIcon />)}
-        <div className="nav-label">Tools</div>
-        {TOOLS.map((tool) => link(tool.path, tool.title, <ToolIcon id={tool.id} />, tool.color))}
+        {GROUPS.map((group) => (
+          <div key={group} role="group" aria-label={group}>
+            <div className="nav-label">{group}</div>
+            {TOOLS.filter((tool) => tool.group === group).map((tool) => link(tool.path, tool.title, <ToolIcon id={tool.id} />, tool.color))}
+          </div>
+        ))}
         <div className="nav-label">Library</div>
         {link("/recent", "Recent files", <ClockIcon />)}
       </nav>
+      {canInstall && <button className="btn btn-secondary btn-sm install" onClick={onInstall}><DownloadIcon size={16} /> Install app</button>}
       <div className="sidebar-private">
         <ShieldIcon size={18} />
         <div><strong>100% private</strong><small>Files stay on your device. Nothing is uploaded.</small></div>

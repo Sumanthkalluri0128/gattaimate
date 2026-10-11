@@ -7,6 +7,7 @@ import Dropzone from "./Dropzone";
 import DocumentViewer from "./DocumentViewer";
 import Modal from "./Modal";
 import Notice, { type NoticeState } from "./Notice";
+import SizeCompare from "./SizeCompare";
 import PageHeader from "./PageHeader";
 import { FileIcon } from "./icons";
 
@@ -16,11 +17,13 @@ export type ToolContext = {
   bytes: () => Promise<Uint8Array>;
   progress: (text: string) => void;
 };
-export type ToolResult = { message: string; name: string; size: number; pages?: number };
+export type ToolResult = { message: string; name: string; size: number; pages?: number; /** original size, to show a before/after comparison */ before?: number };
 
 type Props = {
   id: ToolId;
   accept: "pdf" | "image";
+  /** Set false for tools that must accept password-protected PDFs (skips reading the page count). */
+  readPages?: boolean;
   actionLabel: string;
   /** Options UI, rendered once a file is chosen. Own the option state in the page. */
   options?: (info: { file: File; pageCount: number | null }) => ReactNode;
@@ -33,7 +36,8 @@ const ACCEPT = {
 } as const;
 
 /** One file in → options → one action. Used by Split, Extract, Rotate and both Optimize tools. */
-export default function SingleFileTool({ id, accept, actionLabel, options, run }: Props) {
+export default function SingleFileTool({ id, accept, readPages = true, actionLabel, options, run }: Props) {
+  const needsPages = accept === "pdf" && readPages;
   const spec = ACCEPT[accept];
   const tool = toolById(id);
   const recent = useRecent();
@@ -45,6 +49,7 @@ export default function SingleFileTool({ id, accept, actionLabel, options, run }
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [notice, setNotice] = useState<NoticeState>(null);
+  const [compare, setCompare] = useState<{ before: number; after: number } | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const closePreview = useCallback(() => setPreviewing(false), []);
 
@@ -59,9 +64,10 @@ export default function SingleFileTool({ id, accept, actionLabel, options, run }
     setFile(chosen);
     setPageCount(null);
     setUnreadable(false);
+    setCompare(null);
     setNotice(valid.length > 1 ? { kind: "info", text: `This tool works on one file at a time — using “${chosen.name}”.` } : null);
 
-    if (accept === "pdf") {
+    if (needsPages) {
       try {
         const count = await getPdfPageCount(await readBytes(chosen), chosen.name);
         if (token === loadToken.current) setPageCount(count);
@@ -75,18 +81,20 @@ export default function SingleFileTool({ id, accept, actionLabel, options, run }
 
   function reset() {
     loadToken.current++;
-    setFile(null); setPageCount(null); setUnreadable(false); setNotice(null);
+    setFile(null); setPageCount(null); setUnreadable(false); setNotice(null); setCompare(null);
   }
 
   async function submit() {
     if (!file || busy) return;
     setBusy(true);
     setNotice(null);
+    setCompare(null);
     setStatus("");
     try {
       const result = await run({ file, pageCount, bytes: () => readBytes(file), progress: setStatus });
       recent.add({ name: result.name, tool: tool.title, pages: result.pages, size: result.size });
       setNotice({ kind: "success", text: result.message });
+      setCompare(result.before ? { before: result.before, after: result.size } : null);
     } catch (error) {
       setNotice({ kind: "error", text: errorMessage(error, "Something went wrong. Please try again.") });
     } finally {
@@ -108,7 +116,7 @@ export default function SingleFileTool({ id, accept, actionLabel, options, run }
               <div className="file-name" title={file.name}>{file.name}</div>
               <div className="file-meta">
                 {formatBytes(file.size)}
-                {accept === "pdf" && !unreadable && <> · {pageCount === null ? "reading pages…" : `${pageCount} ${pageCount === 1 ? "page" : "pages"}`}</>}
+                {needsPages && !unreadable && <> · {pageCount === null ? "reading pages…" : `${pageCount} ${pageCount === 1 ? "page" : "pages"}`}</>}
               </div>
             </div>
             <button className="btn btn-secondary btn-sm" disabled={busy || unreadable} onClick={() => setPreviewing(true)}>Preview</button>
@@ -118,7 +126,7 @@ export default function SingleFileTool({ id, accept, actionLabel, options, run }
           {!unreadable && (
             <section className="card options">
               {options?.({ file, pageCount })}
-              <button className="btn btn-primary btn-block" disabled={busy || (accept === "pdf" && pageCount === null)} onClick={() => void submit()}>
+              <button className="btn btn-primary btn-block" data-primary disabled={busy || (needsPages && pageCount === null)} onClick={() => void submit()}>
                 {busy && <span className="spinner" />}
                 {busy ? status || "Working…" : actionLabel}
               </button>
@@ -128,6 +136,7 @@ export default function SingleFileTool({ id, accept, actionLabel, options, run }
         </>
       )}
       <Notice notice={notice} />
+      {compare && <SizeCompare before={compare.before} after={compare.after} />}
       {previewing && file && (
         <Modal title={file.name} onClose={closePreview}>
           <DocumentViewer key={`${file.name}-${file.size}-${file.lastModified}`} file={file} />

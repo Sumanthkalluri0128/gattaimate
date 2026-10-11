@@ -100,6 +100,25 @@ export function Empty({ title, text }: { title: string; text: string }) {
   return <View style={s.empty}><Text style={s.emptyTitle}>{title}</Text><Text style={s.muted}>{text}</Text></View>;
 }
 
+export function SizeBars({ before, after }: { before: number; after: number }) {
+  const saved = Math.round((1 - after / before) * 100);
+  const max = Math.max(before, after, 1);
+  const row = (label: string, value: number, color: string) => (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <Text style={[s.meta, { width: 46 }]}>{label}</Text>
+      <View style={{ flex: 1, height: 10, borderRadius: 5, backgroundColor: "#FFFFFF14", overflow: "hidden" }}><View style={{ width: `${(value / max) * 100}%`, height: 10, borderRadius: 5, backgroundColor: color }} /></View>
+      <Text style={[s.meta, { width: 62, textAlign: "right" }]}>{value >= 1048576 ? `${(value / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(value / 1024))} KB`}</Text>
+    </View>
+  );
+  return (
+    <Card>
+      {row("Before", before, "#8C73FF")}
+      {row("After", after, saved > 0 ? "#3FD5A5" : "#FF7A8A")}
+      <Text style={{ color: saved > 0 ? colors.success : colors.muted, fontWeight: "700", fontSize: 13 }}>{saved > 0 ? `${saved}% smaller` : saved < 0 ? `${-saved}% larger` : "Same size"}</Text>
+    </Card>
+  );
+}
+
 export const textStyles = { muted: () => s.muted, h2: () => s.h2, fileName: () => s.fileName, meta: () => s.meta };
 
 export const s = StyleSheet.create({

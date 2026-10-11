@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { formatBytes } from "@gattaimate/pdf-core";
-import { TOOLS } from "../tools";
+import { GROUPS, TOOLS, type ToolDef } from "../tools";
 import { href } from "../router";
 import { timeAgo, useRecent } from "../hooks/useRecent";
 import { ClockIcon, SearchIcon, ShieldIcon, ToolIcon } from "../components/icons";
@@ -32,20 +32,25 @@ export default function HomePage() {
       <section aria-labelledby="tools-title">
         <div className="section-head">
           <div><span className="kicker">YOUR WORKSPACE</span><h2 id="tools-title">Everything for your documents</h2></div>
-          <label className="search"><SearchIcon size={16} /><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tools…" aria-label="Search tools" /></label>
+          <label className="search"><SearchIcon size={16} /><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tools…  ( / )" aria-label="Search tools" /></label>
         </div>
         {tools.length ? (
-          <div className="tool-grid">
-            {tools.map((tool) => (
-              <a key={tool.id} className="tool-card" href={href(tool.path)} style={{ "--accent": tool.color } as React.CSSProperties}>
-                <span className="tool-icon"><ToolIcon id={tool.id} size={22} /></span>
-                <strong>{tool.title}</strong>
-                <small>{tool.blurb}</small>
-              </a>
-            ))}
-          </div>
+          (query.trim() ? [["Results", tools] as const] : GROUPS.map((group) => [group, tools.filter((tool) => tool.group === group)] as const)).map(([group, list]) => (
+            <div key={group} className="tool-group">
+              <h3 className="group-title">{group}</h3>
+              <div className="tool-grid">
+                {(list as readonly ToolDef[]).map((tool) => (
+                  <a key={tool.id} className="tool-card" href={href(tool.path)} style={{ "--accent": tool.color } as React.CSSProperties}>
+                    <span className="tool-icon"><ToolIcon id={tool.id} size={22} /></span>
+                    <strong>{tool.title}</strong>
+                    <small>{tool.blurb}</small>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))
         ) : (
-          <div className="empty"><SearchIcon size={22} /><div><strong>No tools match “{query}”</strong><small>Try “merge”, “rotate” or “image”.</small></div></div>
+          <div className="empty"><SearchIcon size={22} /><div><strong>No tools match “{query}”</strong><small>Try “merge”, “sign” or “image”.</small></div></div>
         )}
       </section>
 

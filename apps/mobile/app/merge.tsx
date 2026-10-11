@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import {
   baseName, formatBytes, getPdfPageCount, isImageName, isPdfName, mergePdfBuffers, withExtension, type Rotation
 } from "@gattaimate/pdf-core";
 import { openInViewer, pickFiles, readBytes, saveAndShare, type Picked } from "../src/files";
 import ImagePreview from "../src/ImagePreview";
+import { takeIncoming } from "../src/incoming";
 import { useRecent } from "../src/recent";
 import { colors } from "../src/theme";
 import { Badge, Btn, Card, Field, Heading, IconBtn, Notice, Screen, s, type NoticeState } from "../src/ui";
@@ -14,8 +16,9 @@ type Item = Picked & { rotation: Rotation; pages?: number; problem?: string };
 
 export default function MergeScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
-  const imagesOnly = mode === "images";
-  const title = imagesOnly ? "Images to PDF" : "Merge PDF";
+  const scan = mode === "scan";
+  const imagesOnly = mode === "images" || scan;
+  const title = scan ? "Scan to PDF" : imagesOnly ? "Images to PDF" : "Merge PDF";
   const recent = useRecent();
 
   const [items, setItems] = useState<Item[]>([]);
@@ -27,26 +30,47 @@ export default function MergeScreen() {
 
   const patch = (id: string, change: Partial<Item>) => setItems((cur) => cur.map((item) => (item.id === id ? { ...item, ...change } : item)));
 
+  async function ingest(files: Picked[], rejected = 0) {
+    if (files.length === 0) {
+      if (rejected) setNotice({ kind: "error", text: imagesOnly ? "Choose JPG, JPEG or PNG images." : "Choose PDF, JPG, JPEG or PNG files." });
+      return;
+    }
+    setNotice(rejected ? { kind: "info", text: `Skipped ${rejected} unsupported file${rejected === 1 ? "" : "s"}.` } : null);
+    if (items.length === 0 && !nameEdited) setOutputName(`${scan ? "scan" : baseName(files[0].name) || "gattaimate"}-${imagesOnly ? "images" : "merged"}.pdf`.replace("scan-images", "scan"));
+    const added: Item[] = files.map((file) => ({ ...file, rotation: 0, pages: isImageName(file.name) ? 1 : undefined }));
+    setItems((cur) => [...cur, ...added]);
+    for (const item of added) {
+      if (item.pages !== undefined) continue;
+      try { patch(item.id, { pages: await getPdfPageCount(await readBytes(item.uri), item.name) }); }
+      catch (error) { patch(item.id, { problem: error instanceof Error ? error.message : "This PDF could not be read." }); }
+    }
+  }
+
   async function add() {
     try {
       const { files, rejected } = await pickFiles(imagesOnly ? "image" : "any", true);
-      if (files.length === 0) {
-        if (rejected) setNotice({ kind: "error", text: imagesOnly ? "Choose JPG, JPEG or PNG images." : "Choose PDF, JPG, JPEG or PNG files." });
-        return;
-      }
-      setNotice(rejected ? { kind: "info", text: `Skipped ${rejected} unsupported file${rejected === 1 ? "" : "s"}.` } : null);
-      if (items.length === 0 && !nameEdited) setOutputName(`${baseName(files[0].name) || "gattaimate"}-${imagesOnly ? "images" : "merged"}.pdf`);
-      const added: Item[] = files.map((file) => ({ ...file, rotation: 0, pages: isImageName(file.name) ? 1 : undefined }));
-      setItems((cur) => [...cur, ...added]);
-      for (const item of added) {
-        if (item.pages !== undefined) continue;
-        try { patch(item.id, { pages: await getPdfPageCount(await readBytes(item.uri), item.name) }); }
-        catch (error) { patch(item.id, { problem: error instanceof Error ? error.message : "This PDF could not be read." }); }
-      }
+      await ingest(files, rejected);
     } catch {
       setNotice({ kind: "error", text: "Could not open the file picker. Please try again." });
     }
   }
+
+  async function takePhoto() {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) { setNotice({ kind: "error", text: "Camera permission is needed to scan. You can allow it in your phone's Settings, or add photos from your gallery instead." }); return; }
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.85, allowsEditing: true });
+      if (result.canceled || !result.assets[0]) return;
+      const asset = result.assets[0];
+      const name = `scan-${String(items.length + 1).padStart(2, "0")}.jpg`;
+      await ingest([{ id: `${asset.uri}#${Date.now()}`, name, uri: asset.uri, size: asset.fileSize, mimeType: "image/jpeg" }]);
+    } catch {
+      setNotice({ kind: "error", text: "Could not use the camera. Please try again." });
+    }
+  }
+
+  // Files shared into the app from another app are picked up on arrival.
+  useEffect(() => { const incoming = takeIncoming(imagesOnly ? "image" : "any"); if (incoming.length) void ingest(incoming); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const move = (from: number, to: number) => setItems((cur) => {
     if (to < 0 || to >= cur.length) return cur;
@@ -67,7 +91,7 @@ export default function MergeScreen() {
       const result = await mergePdfBuffers(inputs);
       const name = withExtension(outputName, ".pdf", imagesOnly ? "gattaimate-images" : "gattaimate-merged");
       const saved = await saveAndShare(result.bytes, name, "application/pdf");
-      recent.add({ name, tool: imagesOnly ? "Images to PDF" : "Merge", pages: result.pageCount, size: saved.size });
+      recent.add({ name, tool: scan ? "Scan" : imagesOnly ? "Images to PDF" : "Merge", pages: result.pageCount, size: saved.size });
       setNotice({ kind: "success", text: `Created ${name} with ${result.pageCount} page${result.pageCount === 1 ? "" : "s"} (${formatBytes(saved.size)}). ${saved.shared ? "Choose where to save or send it." : "Sharing isn't available, so it is stored in the app cache."}` });
     } catch (error) {
       setNotice({ kind: "error", text: error instanceof Error ? error.message : "Could not create the PDF. Please try again." });
@@ -82,8 +106,9 @@ export default function MergeScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ title }} />
-      <Heading title={title} color={imagesOnly ? "#279BFF" : "#FF477E"} blurb={imagesOnly ? "One image per A4 page, in the order shown." : "Combine PDFs and images. Use the arrows to set the order."} />
-      <Btn variant="secondary" label={items.length ? "+ Add more files" : imagesOnly ? "Choose images" : "Choose PDFs & images"} onPress={() => void add()} disabled={busy} />
+      <Heading title={title} color={scan ? "#2FD0E8" : imagesOnly ? "#279BFF" : "#FF477E"} blurb={scan ? "Take a photo of each page — the system crop tool trims the edges. Reorder or rotate, then create the PDF." : imagesOnly ? "One image per A4 page, in the order shown." : "Combine PDFs and images. Use the arrows to set the order."} />
+      {scan && <Btn label={items.length ? "📷 Scan another page" : "📷 Scan a page"} onPress={() => void takePhoto()} disabled={busy} />}
+      <Btn variant="secondary" label={items.length ? "+ Add more files" : scan ? "Add photos from gallery" : imagesOnly ? "Choose images" : "Choose PDFs & images"} onPress={() => void add()} disabled={busy} />
 
       {items.length > 0 && (
         <Card>

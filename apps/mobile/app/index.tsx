@@ -13,7 +13,8 @@ export default function HomeScreen() {
 
   const open = (id: ToolId) => {
     if (id === "merge") router.push("/merge");
-    else if (id === "images") router.push({ pathname: "/merge", params: { mode: "images" } });
+    else if (id === "images" || id === "scan") router.push({ pathname: "/merge", params: { mode: id } });
+    else if (id === "presets") router.push("/presets");
     else router.push({ pathname: "/tool/[id]", params: { id } });
   };
 

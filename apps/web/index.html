@@ -7,9 +7,13 @@
     <meta name="color-scheme" content="dark" />
     <meta name="description" content="Merge PDFs, convert images to PDF, split, rotate and compress — privately on your device. GattaiMate is your modern document toolkit." />
     <link rel="icon" type="image/svg+xml" href="/gattaimate-icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" />
+    <script>
+      try { var t = localStorage.getItem("gattaimate.theme"); if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"; document.documentElement.dataset.theme = t; } catch (e) {}
+    </script>
     <title>GattaiMate — Complete PDF Toolkit</title>
   </head>
   <body>

@@ -29,6 +29,19 @@ const TOOL_ICONS: Record<ToolId, (p: IconProps) => ReactNode> = {
   extract: (p) => <Svg {...p}><path d="M6 3.5h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" /><path d="M9 14.5h6M12 11.5v6" /></Svg>,
   rotate: (p) => <Svg {...p}><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5" /></Svg>,
   "optimize-pdf": (p) => <Svg {...p}><path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4" /><path d="M10 12h4" /></Svg>,
-  "optimize-image": (p) => <Svg {...p}><path d="M12 3v4m0 10v4M3 12h4m10 0h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></Svg>
+  "optimize-image": (p) => <Svg {...p}><path d="M12 3v4m0 10v4M3 12h4m10 0h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></Svg>,
+  organize: (p) => <Svg {...p}><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><path d="M13 16.5h7m-3-3 3 3-3 3" /></Svg>,
+  stamp: (p) => <Svg {...p}><path d="M9 4h6v6l2.5 3H6.5L9 10V4ZM5 17h14v3H5z" /></Svg>,
+  sign: (p) => <Svg {...p}><path d="M4 18c3-6 4-9 6-9s-2 8 0 8 3-6 5-6 1 4 3 4M4 21h16" /></Svg>,
+  forms: (p) => <Svg {...p}><rect x="5" y="3.5" width="14" height="17" rx="2" /><path d="m8.5 8.5 1.4 1.4 2.4-2.6M8.5 14h7M8.5 17h4" /></Svg>,
+  redact: (p) => <Svg {...p}><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M7 10h6M7 14h10" strokeWidth="3.2" /></Svg>,
+  "to-images": (p) => <Svg {...p}><path d="M6 3.5h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" /><circle cx="10" cy="12.5" r="1.4" /><path d="m7 19 4-3.5 2.5 2 2-2L18 19" /></Svg>,
+  protect: (p) => <Svg {...p}><rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5M12 14.5v2" /></Svg>,
+  presets: (p) => <Svg {...p}><path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z" /></Svg>
 };
 export const ToolIcon = ({ id, size }: { id: ToolId } & IconProps) => <>{TOOL_ICONS[id]({ size })}</>;
+
+export const SunIcon = (p: IconProps) => <Svg {...p}><circle cx="12" cy="12" r="4" /><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" /></Svg>;
+export const MoonIcon = (p: IconProps) => <Svg {...p}><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z" /></Svg>;
+export const DownloadIcon = (p: IconProps) => <Svg {...p}><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" /></Svg>;
+export const KeyboardIcon = (p: IconProps) => <Svg {...p}><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" /></Svg>;

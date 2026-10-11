@@ -35,7 +35,7 @@ export default function OptimizeImagePage() {
         const size = downloadBlob(result.blob, result.name);
         const delta = Math.round((1 - size / file.size) * 100);
         const verdict = delta > 0 ? `${delta}% smaller` : "not smaller — try a lower quality or size";
-        return { message: `Saved ${result.name} (${result.width}×${result.height}): ${formatBytes(file.size)} → ${formatBytes(size)}, ${verdict}.`, name: result.name, size, pages: 1 };
+        return { message: `Saved ${result.name} (${result.width}×${result.height}): ${formatBytes(file.size)} → ${formatBytes(size)}, ${verdict}.`, name: result.name, size, pages: 1, before: file.size };
       }}
     />
   );
