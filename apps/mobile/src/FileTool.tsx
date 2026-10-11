@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Text, View } from "react-native";
 import { Stack } from "expo-router";
 import { formatBytes, getPdfPageCount, isPdfName } from "@gattaimate/pdf-core";
-import { openInViewer, pickFiles, readBytes, saveAndShare, shareUri, type Picked } from "./files";
+import { isLockedMessage, lockedHint, openInViewer, pickFiles, readBytes, saveAndShare, shareUri, type Picked } from "./files";
 import ImagePreview from "./ImagePreview";
 import { takeIncoming } from "./incoming";
 import { useRecent } from "./recent";
@@ -48,7 +48,7 @@ export default function FileTool({ id, kind, readPages = true, actionLabel, opti
       } catch (error) {
         if (mine !== token.current) return;
         setUnreadable(true);
-        setNotice({ kind: "error", text: error instanceof Error ? error.message : "This PDF could not be read." });
+        setNotice({ kind: "error", text: isLockedMessage(error) ? lockedHint(chosen.name) : error instanceof Error ? error.message : "This PDF could not be read." });
       }
     }
   }

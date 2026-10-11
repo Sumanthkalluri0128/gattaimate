@@ -3,7 +3,7 @@ import { BUILT_IN_PRESETS, describeStep, formatBytes, runPipeline, baseName, wit
 import Dropzone from "../components/Dropzone";
 import Notice, { type NoticeState } from "../components/Notice";
 import PageHeader from "../components/PageHeader";
-import { downloadBytes, errorMessage, isPdfFile, newId, readBytes } from "../lib/browser";
+import { downloadBytes, errorMessage, isPdfFile, looksEncrypted, newId, readBytes } from "../lib/browser";
 import { usePresets } from "../hooks/usePresets";
 import { useRecent } from "../hooks/useRecent";
 
@@ -22,9 +22,6 @@ function Builder({ onSave }: { onSave: (preset: Preset) => void }) {
   const [clean, setClean] = useState(true);
   const [rotate, setRotate] = useState(false);
   const [angle, setAngle] = useState(90);
-  const [numbers, setNumbers] = useState(false);
-  const [watermark, setWatermark] = useState(false);
-  const [wmText, setWmText] = useState("DRAFT");
   const [lock, setLock] = useState(false);
   const [error, setError] = useState("");
 
@@ -33,8 +30,6 @@ function Builder({ onSave }: { onSave: (preset: Preset) => void }) {
     if (useShrink) steps.push({ op: "shrink", quality });
     if (clean) steps.push({ op: "optimize" });
     if (rotate) steps.push({ op: "rotate", angle });
-    if (numbers) steps.push({ op: "numbers", format: "Page {n} of {total}" });
-    if (watermark) steps.push({ op: "watermark", text: wmText || "DRAFT" });
     if (lock) steps.push({ op: "protect", password: "" });
     if (!name.trim()) return setError("Give the preset a name.");
     if (steps.length === 0) return setError("Pick at least one step.");
@@ -51,9 +46,6 @@ function Builder({ onSave }: { onSave: (preset: Preset) => void }) {
       <label className="check"><input type="checkbox" checked={clean} onChange={(e) => setClean(e.target.checked)} /> Optimize & clear metadata</label>
       <label className="check"><input type="checkbox" checked={rotate} onChange={(e) => setRotate(e.target.checked)} /> Rotate all pages</label>
       {rotate && <select aria-label="Rotation" value={angle} onChange={(e) => setAngle(Number(e.target.value))}><option value={90}>90° right</option><option value={180}>180°</option><option value={270}>90° left</option></select>}
-      <label className="check"><input type="checkbox" checked={numbers} onChange={(e) => setNumbers(e.target.checked)} /> Page numbers (“Page 1 of N”)</label>
-      <label className="check"><input type="checkbox" checked={watermark} onChange={(e) => setWatermark(e.target.checked)} /> Watermark</label>
-      {watermark && <input aria-label="Watermark text" value={wmText} onChange={(e) => setWmText(e.target.value)} maxLength={30} />}
       <label className="check"><input type="checkbox" checked={lock} onChange={(e) => setLock(e.target.checked)} /> Password-protect (asked each time you run)</label>
       {error && <div className="notice notice-error" role="alert">{error}</div>}
       <button className="btn btn-secondary" onClick={save}>Save preset</button>
@@ -68,6 +60,7 @@ export default function PresetsPage() {
   const [selectedId, setSelectedId] = useState(BUILT_IN_PRESETS[0].id);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [password, setPassword] = useState("");
+  const [openPassword, setOpenPassword] = useState("");
   const [building, setBuilding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -95,7 +88,14 @@ export default function PresetsPage() {
     for (const [index, entry] of entries.entries()) {
       setStatus(`File ${index + 1} of ${entries.length}: ${entry.file.name}`);
       try {
-        const result = await runPipeline(await readBytes(entry.file), steps, { shrink });
+        let data = await readBytes(entry.file);
+        if (looksEncrypted(data)) {
+          // Locked PDF: try the password above (or none, for restriction-only files).
+          const { unlockPdf } = await import("../lib/qpdf");
+          try { data = await unlockPdf(data, openPassword); }
+          catch { throw new Error(openPassword ? "the password above doesn't open this file" : "it is password-protected — enter its password above"); }
+        }
+        const result = await runPipeline(data, steps, { shrink });
         result.notes.forEach((n) => notes.add(n));
         pages += result.pageCount;
         outputs.push({ name: withExtension(`${baseName(entry.file.name)}-${preset.id.startsWith("custom") ? "processed" : preset.id}`, ".pdf"), bytes: result.bytes });
@@ -151,6 +151,9 @@ export default function PresetsPage() {
               </li>
             ))}
           </ul>
+          <div className="field"><label htmlFor="open-pw">Password for locked PDFs (optional)</label>
+            <input id="open-pw" type="password" value={openPassword} onChange={(e) => setOpenPassword(e.target.value)} autoComplete="off" />
+            <small>If some files are password-protected, enter their password and they are opened automatically. Files that only have editing restrictions need no password.</small></div>
           {needsPassword && <div className="field"><label htmlFor="batch-pw">Password for the protected copies</label><input id="batch-pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" /></div>}
           <button className="btn btn-primary btn-block" data-primary disabled={busy} onClick={() => void run()}>{busy ? <span className="spinner" /> : null}{busy ? status || "Working…" : `Run “${preset.name}”`}</button>
         </section>

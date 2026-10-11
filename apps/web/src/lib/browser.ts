@@ -28,3 +28,9 @@ export const isImageFile = (file: { name: string; type?: string }) =>
 
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+/** True when an error from the PDF engine means the file needs a password. */
+export const isLockedError = (error: unknown) => error instanceof Error && /password-protected/i.test(error.message);
+
+/** Cheap check for the /Encrypt entry that every encrypted PDF has in its (never compressed) trailer. */
+export const looksEncrypted = (bytes: Uint8Array) => new TextDecoder("latin1").decode(bytes).includes("/Encrypt");

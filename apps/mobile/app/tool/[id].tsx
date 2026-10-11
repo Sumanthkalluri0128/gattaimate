@@ -9,11 +9,10 @@ import Protect from "../../src/screens/Protect";
 import Rotate from "../../src/screens/Rotate";
 import Sign from "../../src/screens/Sign";
 import Split from "../../src/screens/Split";
-import Stamp from "../../src/screens/Stamp";
 import { Heading, Screen } from "../../src/ui";
 
 const SCREENS: Record<string, ComponentType> = {
-  split: Split, extract: Extract, rotate: Rotate, organize: Organize, stamp: Stamp, sign: Sign,
+  split: Split, extract: Extract, rotate: Rotate, organize: Organize, sign: Sign,
   forms: Forms, protect: Protect, "optimize-pdf": OptimizePdf, "optimize-image": OptimizeImage
 };
 

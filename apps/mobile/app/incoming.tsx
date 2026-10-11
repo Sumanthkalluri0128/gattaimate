@@ -6,7 +6,7 @@ import { Badge, Btn, Card, Empty, Heading, Screen, s } from "../src/ui";
 
 const PDF_ACTIONS: { id: string; label: string }[] = [
   { id: "merge", label: "Merge with other files" }, { id: "split", label: "Split" }, { id: "organize", label: "Organize pages" },
-  { id: "extract", label: "Extract pages" }, { id: "sign", label: "Sign" }, { id: "stamp", label: "Page numbers / watermark" },
+  { id: "extract", label: "Extract pages" }, { id: "sign", label: "Sign" },
   { id: "forms", label: "Fill form" }, { id: "protect", label: "Protect with password" }, { id: "optimize-pdf", label: "Optimize" }
 ];
 const IMAGE_ACTIONS = [{ id: "images", label: "Convert to PDF" }, { id: "optimize-image", label: "Optimize image" }];

@@ -1,6 +1,6 @@
 export type ToolId =
   | "merge" | "images" | "scan" | "split" | "extract" | "rotate" | "organize"
-  | "stamp" | "sign" | "forms" | "optimize-pdf" | "optimize-image" | "protect" | "presets";
+  | "sign" | "forms" | "optimize-pdf" | "optimize-image" | "protect" | "presets";
 
 export type ToolDef = { id: ToolId; title: string; blurb: string; color: string; glyph: string };
 
@@ -13,7 +13,6 @@ export const TOOLS: readonly ToolDef[] = [
   { id: "extract", title: "Extract Pages", blurb: "Keep only what you need", color: "#FF9B43", glyph: "⎘" },
   { id: "rotate", title: "Rotate PDF", blurb: "Fix page orientation", color: "#18C995", glyph: "⟳" },
   { id: "organize", title: "Organize Pages", blurb: "Reorder, delete, duplicate", color: "#FFC233", glyph: "☰" },
-  { id: "stamp", title: "Numbers & Watermark", blurb: "Page numbers or a stamp", color: "#2FD0E8", glyph: "№" },
   { id: "sign", title: "Sign PDF", blurb: "Type or upload a signature", color: "#6F8BFF", glyph: "✍" },
   { id: "forms", title: "Fill Form", blurb: "Fill in form fields", color: "#7BE07B", glyph: "☑" },
   { id: "optimize-pdf", title: "Optimize PDF", blurb: "Clean up a PDF", color: "#C15BFF", glyph: "⤢" },

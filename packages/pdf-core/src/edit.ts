@@ -1,8 +1,7 @@
-import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, degrees, rgb, type PDFPage } from "pdf-lib";
 import { encryptPDF } from "@pdfsmaller/pdf-encrypt-lite";
 import { sniffImageKind } from "./images";
 import { loadPdf, SAVE_OPTIONS, type MergeResult } from "./pdf";
-import { resolvePages } from "./ranges";
 
 const norm = (angle: number) => (((angle % 360) + 360) % 360);
 
@@ -30,18 +29,6 @@ export function displayedToUser(page: PDFPage, dx: number, dy: number): { x: num
   }
 }
 
-async function withFont<T>(doc: PDFDocument, name: StandardFonts, use: (font: PDFFont) => T): Promise<T> {
-  const font = await doc.embedFont(name);
-  try {
-    return use(font);
-  } catch (error) {
-    if (error instanceof Error && /encode|WinAnsi/i.test(error.message)) {
-      throw new Error("That text has characters the built-in font can't print. Use Latin letters, numbers and common punctuation.");
-    }
-    throw error;
-  }
-}
-
 /* ------------------------------------------------------------ organize */
 
 export type PagePlan = { page: number; rotation?: number };
@@ -62,74 +49,6 @@ export async function organizePdf(bytes: Uint8Array, plan: PagePlan[]): Promise<
     output.addPage(page);
   });
   return { bytes: await output.save(SAVE_OPTIONS), pageCount: pages.length };
-}
-
-/* --------------------------------------------------- numbers & watermark */
-
-export type NumberPosition = "top-left" | "top-center" | "top-right" | "bottom-left" | "bottom-center" | "bottom-right";
-export type PageNumberOptions = {
-  position?: NumberPosition;
-  /** Use {n} for the page number and {total} for the page count. */
-  format?: string;
-  startAt?: number;
-  fontSize?: number;
-  /** Pages to number (e.g. "2-10"); empty = all. */
-  pages?: string;
-};
-
-export async function addPageNumbers(bytes: Uint8Array, options: PageNumberOptions = {}): Promise<MergeResult> {
-  const { position = "bottom-center", format = "{n}", startAt = 1, fontSize = 11, pages = "" } = options;
-  const doc = await loadPdf(bytes);
-  const targets = new Set(resolvePages(pages, doc.getPageCount()));
-  const total = doc.getPageCount();
-  const margin = 28;
-  await withFont(doc, StandardFonts.Helvetica, (font) => {
-    doc.getPages().forEach((page, index) => {
-      if (!targets.has(index)) return;
-      const text = format.replaceAll("{n}", String(startAt + index)).replaceAll("{total}", String(total + startAt - 1));
-      const width = font.widthOfTextAtSize(text, fontSize);
-      const view = displaySize(page);
-      const dx = position.endsWith("left") ? margin : position.endsWith("right") ? view.width - margin - width : (view.width - width) / 2;
-      const dy = position.startsWith("top") ? margin + fontSize : view.height - margin;
-      const at = displayedToUser(page, dx, dy);
-      page.drawText(text, { x: at.x, y: at.y, size: fontSize, font, color: rgb(0.2, 0.2, 0.25), rotate: degrees(at.rotation) });
-    });
-  });
-  return { bytes: await doc.save(SAVE_OPTIONS), pageCount: total };
-}
-
-export type WatermarkOptions = {
-  text: string;
-  opacity?: number;
-  /** Visual angle in degrees, counter-clockwise (default 45). */
-  angle?: number;
-  fontSize?: number;
-  color?: [number, number, number];
-  pages?: string;
-};
-
-export async function addWatermark(bytes: Uint8Array, options: WatermarkOptions): Promise<MergeResult> {
-  const text = options.text.trim();
-  if (!text) throw new Error("Enter the watermark text.");
-  const { opacity = 0.18, angle = 45, color = [0.85, 0.1, 0.2], pages = "" } = options;
-  const doc = await loadPdf(bytes);
-  const targets = new Set(resolvePages(pages, doc.getPageCount()));
-  await withFont(doc, StandardFonts.HelveticaBold, (font) => {
-    const theta = (angle * Math.PI) / 180;
-    const unit = font.widthOfTextAtSize(text, 1);
-    doc.getPages().forEach((page, index) => {
-      if (!targets.has(index)) return;
-      const view = displaySize(page);
-      const size = options.fontSize ?? Math.min(120, (Math.min(view.width, view.height) * 0.7) / unit / Math.max(Math.cos(theta), 0.5));
-      const width = unit * size;
-      // Centre the text on the page: start point = centre − half the text vector − half the cap height along the normal.
-      const sx = view.width / 2 - (Math.cos(theta) * width) / 2 + Math.sin(theta) * size * 0.35;
-      const sy = view.height / 2 - (Math.sin(theta) * width) / 2 - Math.cos(theta) * size * 0.35;
-      const at = displayedToUser(page, sx, view.height - sy);
-      page.drawText(text, { x: at.x, y: at.y, size, font, color: rgb(...color), opacity, rotate: degrees(angle + at.rotation) });
-    });
-  });
-  return { bytes: await doc.save(SAVE_OPTIONS), pageCount: doc.getPageCount() };
 }
 
 /* ------------------------------------------------------------ signature */

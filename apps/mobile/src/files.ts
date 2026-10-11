@@ -62,3 +62,9 @@ export async function saveCopy(uri: string, mimeType: string, title: string): Pr
 export async function openInViewer(uri: string, title: string): Promise<void> {
   await shareUri(uri, "application/pdf", title);
 }
+
+/** The phone app can't unlock PDFs (no WebAssembly), so say exactly where to do it. */
+export function lockedHint(name: string): string {
+  return `“${name}” is password-protected. The Android app can't unlock PDFs yet — open it in the web app (Protect / Unlock → Remove password), then use the unlocked copy here.`;
+}
+export const isLockedMessage = (error: unknown) => error instanceof Error && /password-protected/i.test(error.message);

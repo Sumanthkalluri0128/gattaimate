@@ -1,6 +1,6 @@
 export type ToolId =
   | "merge" | "images" | "split" | "extract" | "rotate" | "organize"
-  | "stamp" | "sign" | "forms" | "redact"
+  | "sign" | "forms" | "redact"
   | "optimize-pdf" | "optimize-image" | "to-images" | "protect" | "presets";
 
 export type ToolGroup = "Create" | "Organize" | "Edit" | "Convert & secure" | "Automate";
@@ -15,7 +15,6 @@ export const TOOLS: readonly ToolDef[] = [
   { id: "extract", path: "/extract", title: "Extract Pages", blurb: "Keep only the pages you need", color: "#ff9b43", group: "Organize" },
   { id: "rotate", path: "/rotate", title: "Rotate PDF", blurb: "Fix page orientation", color: "#18c995", group: "Organize" },
   { id: "organize", path: "/organize", title: "Organize Pages", blurb: "Drag, delete, duplicate and rotate pages", color: "#ffc233", group: "Organize" },
-  { id: "stamp", path: "/stamp", title: "Numbers & Watermark", blurb: "Add page numbers or a text stamp", color: "#2fd0e8", group: "Edit" },
   { id: "sign", path: "/sign", title: "Sign PDF", blurb: "Draw, type or upload a signature", color: "#6f8bff", group: "Edit" },
   { id: "forms", path: "/forms", title: "Fill Form", blurb: "Fill in form fields and flatten", color: "#7be07b", group: "Edit" },
   { id: "redact", path: "/redact", title: "Redact", blurb: "Permanently black out sensitive areas", color: "#ff5f5f", group: "Edit" },

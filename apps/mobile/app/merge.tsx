@@ -5,7 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import {
   baseName, formatBytes, getPdfPageCount, isImageName, isPdfName, mergePdfBuffers, withExtension, type Rotation
 } from "@gattaimate/pdf-core";
-import { openInViewer, pickFiles, readBytes, saveAndShare, type Picked } from "../src/files";
+import { isLockedMessage, lockedHint, openInViewer, pickFiles, readBytes, saveAndShare, type Picked } from "../src/files";
 import ImagePreview from "../src/ImagePreview";
 import { takeIncoming } from "../src/incoming";
 import { useRecent } from "../src/recent";
@@ -42,7 +42,7 @@ export default function MergeScreen() {
     for (const item of added) {
       if (item.pages !== undefined) continue;
       try { patch(item.id, { pages: await getPdfPageCount(await readBytes(item.uri), item.name) }); }
-      catch (error) { patch(item.id, { problem: error instanceof Error ? error.message : "This PDF could not be read." }); }
+      catch (error) { patch(item.id, { problem: isLockedMessage(error) ? lockedHint(item.name) : error instanceof Error ? error.message : "This PDF could not be read." }); }
     }
   }
 

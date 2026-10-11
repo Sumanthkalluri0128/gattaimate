@@ -16,7 +16,6 @@ const SplitPage = page(() => import("./pages/SplitPage"));
 const ExtractPage = page(() => import("./pages/ExtractPage"));
 const RotatePage = page(() => import("./pages/RotatePage"));
 const OrganizePage = page(() => import("./pages/OrganizePage"));
-const StampPage = page(() => import("./pages/StampPage"));
 const SignPage = page(() => import("./pages/SignPage"));
 const FormsPage = page(() => import("./pages/FormsPage"));
 const RedactPage = page(() => import("./pages/RedactPage"));
@@ -35,7 +34,6 @@ const ROUTES: Record<string, { title: string; Page: ComponentType }> = {
   "/extract": { title: "Extract Pages", Page: ExtractPage },
   "/rotate": { title: "Rotate PDF", Page: RotatePage },
   "/organize": { title: "Organize Pages", Page: OrganizePage },
-  "/stamp": { title: "Numbers & Watermark", Page: StampPage },
   "/sign": { title: "Sign PDF", Page: SignPage },
   "/forms": { title: "Fill Form", Page: FormsPage },
   "/redact": { title: "Redact", Page: RedactPage },

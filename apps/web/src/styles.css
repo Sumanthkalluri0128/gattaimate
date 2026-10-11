@@ -340,3 +340,13 @@ select { font-size: 14px; }
 [data-theme="light"] .pad canvas { border-color: #b7aedd; }
 [data-theme="light"] .spinner { color: #5b3fd0; }
 [data-theme="light"] .scrim, [data-theme="light"] .modal-backdrop { background: #1b1a2e88; }
+
+/* ---------- Password unlock ---------- */
+.unlock { display: grid; gap: 10px; }
+.unlock p { margin: 0; font-size: 13px; line-height: 1.55; }
+.unlock-row { display: flex; gap: 8px; }
+.unlock-row input { flex: 1; min-width: 0; min-height: 40px; padding: 0 12px; border: 1px solid #444057; border-radius: 10px; background: #141421; color: var(--text); font-size: 14px; }
+[data-theme="light"] .unlock-row input { background: #fff; border-color: #cfcae8; }
+.unlock.compact { margin-top: 8px; }
+.unlock.compact .unlock-row input { min-height: 34px; }
+@media (max-width: 640px) { .file-row .unlock { flex: 1 1 100%; } }

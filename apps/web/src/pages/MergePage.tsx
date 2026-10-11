@@ -6,11 +6,13 @@ import Modal from "../components/Modal";
 import Notice, { type NoticeState } from "../components/Notice";
 import PageHeader from "../components/PageHeader";
 import { AlertIcon, ArrowDownIcon, ArrowUpIcon, DragIcon, PlusIcon, RotateIcon, ShieldIcon, ToolIcon } from "../components/icons";
-import { downloadBytes, errorMessage, isImageFile, isPdfFile, newId, readBytes } from "../lib/browser";
+import { downloadBytes, errorMessage, isImageFile, isLockedError, isPdfFile, newId, readBytes } from "../lib/browser";
+import { openLockedPdf } from "../lib/unlock";
+import UnlockPrompt from "../components/UnlockPrompt";
 import { useRecent } from "../hooks/useRecent";
 
 type Mode = "merge" | "images";
-type Item = { id: string; file: File; pages?: number; problem?: string; rotation: Rotation };
+type Item = { id: string; file: File; pages?: number; problem?: string; locked?: boolean; rotation: Rotation };
 
 const MODES = {
   merge: {
@@ -69,12 +71,28 @@ export default function MergePage({ mode }: { mode: Mode }) {
     // Read page counts one at a time so large batches don't spike memory.
     for (const item of added) {
       if (item.pages !== undefined) continue;
+      await readPages(item.id, item.file);
+    }
+  }
+
+  /** Count pages; a locked PDF gets a silent empty-password attempt, then waits for the user's password. */
+  async function readPages(id: string, file: File) {
+    try {
+      patch(id, { pages: await getPdfPageCount(await readBytes(file), file.name), problem: undefined, locked: false });
+    } catch (error) {
+      if (!isLockedError(error)) { patch(id, { problem: errorMessage(error, "This PDF could not be read.") }); return; }
       try {
-        patch(item.id, { pages: await getPdfPageCount(await readBytes(item.file), item.file.name) });
-      } catch (error) {
-        patch(item.id, { problem: errorMessage(error, "This PDF could not be read.") });
+        const opened = await openLockedPdf(file, "");
+        patch(id, { file: opened, pages: await getPdfPageCount(await readBytes(opened), opened.name), problem: undefined, locked: false });
+      } catch {
+        patch(id, { locked: true, problem: "Password-protected" });
       }
     }
+  }
+
+  async function unlockItem(item: Item, password: string) {
+    const opened = await openLockedPdf(item.file, password);
+    patch(item.id, { file: opened, locked: false, problem: undefined, pages: await getPdfPageCount(await readBytes(opened), opened.name) });
   }
 
   function move(from: number, to: number) {
@@ -155,6 +173,7 @@ export default function MergePage({ mode }: { mode: Mode }) {
                       {formatBytes(item.file.size)} · {item.problem ? <span className="problem"><AlertIcon size={12} /> {item.problem}</span> : item.pages === undefined ? "reading pages…" : `${item.pages} ${item.pages === 1 ? "page" : "pages"}`}
                       {item.rotation > 0 && <span className="chip">↻ {item.rotation}°</span>}
                     </div>
+                    {item.locked && <UnlockPrompt compact name={item.file.name} onUnlock={(pw) => unlockItem(item, pw)} />}
                   </div>
                   <div className="row-actions">
                     <button className="btn btn-ghost btn-sm" onClick={() => setPreview(item.file)}>Preview</button>
@@ -185,7 +204,7 @@ export default function MergePage({ mode }: { mode: Mode }) {
           {busy ? <span className="spinner" /> : <ToolIcon id="merge" size={18} />}
           {busy ? "Creating your PDF…" : items.length === 0 ? "Add files to begin" : "Create PDF"}
         </button>
-        {hasProblem && <p className="fine-print warn">Remove the files marked with a warning, then try again.</p>}
+        {hasProblem && <p className="fine-print warn">Unlock or remove the files marked with a warning, then try again.</p>}
         <p className="fine-print"><ShieldIcon size={14} /> Processed in your browser. Your documents are never uploaded.</p>
       </section>
 

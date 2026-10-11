@@ -31,7 +31,6 @@ const TOOL_ICONS: Record<ToolId, (p: IconProps) => ReactNode> = {
   "optimize-pdf": (p) => <Svg {...p}><path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4" /><path d="M10 12h4" /></Svg>,
   "optimize-image": (p) => <Svg {...p}><path d="M12 3v4m0 10v4M3 12h4m10 0h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></Svg>,
   organize: (p) => <Svg {...p}><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><path d="M13 16.5h7m-3-3 3 3-3 3" /></Svg>,
-  stamp: (p) => <Svg {...p}><path d="M9 4h6v6l2.5 3H6.5L9 10V4ZM5 17h14v3H5z" /></Svg>,
   sign: (p) => <Svg {...p}><path d="M4 18c3-6 4-9 6-9s-2 8 0 8 3-6 5-6 1 4 3 4M4 21h16" /></Svg>,
   forms: (p) => <Svg {...p}><rect x="5" y="3.5" width="14" height="17" rx="2" /><path d="m8.5 8.5 1.4 1.4 2.4-2.6M8.5 14h7M8.5 17h4" /></Svg>,
   redact: (p) => <Svg {...p}><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M7 10h6M7 14h10" strokeWidth="3.2" /></Svg>,

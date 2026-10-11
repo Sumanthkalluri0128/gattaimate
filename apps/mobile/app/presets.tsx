@@ -13,8 +13,6 @@ function Builder({ onSave }: { onSave: (preset: Preset) => void }) {
   const [name, setName] = useState("");
   const [clean, setClean] = useState(true);
   const [rotate, setRotate] = useState(false);
-  const [numbers, setNumbers] = useState(false);
-  const [watermark, setWatermark] = useState("");
   const [lock, setLock] = useState(false);
   const [error, setError] = useState("");
   const onOff = (value: boolean, set: (v: boolean) => void, label: string) =>
@@ -24,8 +22,6 @@ function Builder({ onSave }: { onSave: (preset: Preset) => void }) {
     const steps: PipelineStep[] = [];
     if (clean) steps.push({ op: "optimize" });
     if (rotate) steps.push({ op: "rotate", angle: 90 });
-    if (numbers) steps.push({ op: "numbers", format: "Page {n} of {total}" });
-    if (watermark.trim()) steps.push({ op: "watermark", text: watermark.trim() });
     if (lock) steps.push({ op: "protect", password: "" });
     if (!name.trim()) return setError("Give the preset a name.");
     if (steps.length === 0) return setError("Pick at least one step.");
@@ -38,8 +34,6 @@ function Builder({ onSave }: { onSave: (preset: Preset) => void }) {
       <Field label="Preset name" value={name} onChangeText={setName} maxLength={40} placeholder="Monthly invoices" />
       {onOff(clean, setClean, "Optimize & clear metadata")}
       {onOff(rotate, setRotate, "Rotate all pages 90° right")}
-      {onOff(numbers, setNumbers, "Page numbers (Page 1 of N)")}
-      <Field label="Watermark text (blank = none)" value={watermark} onChangeText={setWatermark} maxLength={30} />
       {onOff(lock, setLock, "Password-protect (asked each run)")}
       {error ? <Text style={{ color: colors.danger, fontSize: 12 }}>{error}</Text> : null}
       <Btn variant="secondary" label="Save preset" onPress={save} />

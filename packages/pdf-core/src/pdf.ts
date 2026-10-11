@@ -20,7 +20,7 @@ export async function loadPdf(bytes: Uint8Array, name = "This PDF"): Promise<PDF
     return await PDFDocument.load(bytes, { updateMetadata: false });
   } catch (error) {
     if (error instanceof Error && /encrypted/i.test(error.message)) {
-      throw new Error(`"${name}" is password-protected. Remove the password and try again.`);
+      throw new Error(`"${name}" is password-protected. Unlock it first (the web app opens locked PDFs with the password) and try again.`);
     }
     throw new Error(`Could not open "${name}". It may be damaged or not a supported PDF.`);
   }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PDFDocument, degrees } from "pdf-lib";
 import {
-  addPageNumbers, addSignature, addWatermark, BUILT_IN_PRESETS, describeStep, displayedToUser, displaySize, fillForm, getPdfPageCount,
+  addSignature, BUILT_IN_PRESETS, describeStep, displayedToUser, displaySize, fillForm, getPdfPageCount,
   listFormFields, organizePdf, protectPdf, replacePagesWithImages, runPipeline, extractPdfPages
 } from "../src/index";
 
@@ -44,22 +44,6 @@ describe("geometry", () => {
     expect(displayedToUser(page, 0, 100)).toMatchObject({ x: 200, y: 100 });
     page.setRotation(degrees(270));
     expect(displayedToUser(page, 0, 200)).toMatchObject({ x: 0, y: 100 });
-  });
-});
-
-describe("stamping", () => {
-  it("adds page numbers and watermarks without changing page count", async () => {
-    const pdf = await makePdf(3);
-    const numbered = await addPageNumbers(pdf, { format: "Page {n} of {total}", position: "top-right" });
-    const marked = await addWatermark(numbered.bytes, { text: "DRAFT" });
-    expect(await getPdfPageCount(marked.bytes)).toBe(3);
-    expect(marked.bytes.length).toBeGreaterThan(pdf.length);
-  });
-  it("limits stamping to a page range and rejects bad text", async () => {
-    const pdf = await makePdf(3);
-    await expect(addPageNumbers(pdf, { pages: "9" })).rejects.toThrow("outside");
-    await expect(addWatermark(pdf, { text: "  " })).rejects.toThrow("Enter the watermark");
-    await expect(addWatermark(pdf, { text: "机密" })).rejects.toThrow("characters");
   });
 });
 
@@ -128,14 +112,15 @@ describe("pipeline", () => {
   it("runs built-in presets, noting steps the platform can't do", async () => {
     const pdf = await makePdf(3);
     for (const preset of BUILT_IN_PRESETS) {
-      const result = await runPipeline(pdf, preset.steps);
+      const steps = preset.steps.map((step) => (step.op === "protect" ? { ...step, password: "pass1234" } : step));
+      const result = await runPipeline(pdf, steps);
       expect(result.pageCount).toBe(3);
       if (preset.id === "email") expect(result.notes[0]).toContain("web app");
     }
   });
   it("uses the shrink hook and runs protection last", async () => {
     let shrunk = 0;
-    const result = await runPipeline(await makePdf(2), [{ op: "protect", password: "pass1234" }, { op: "shrink", quality: 50 }, { op: "numbers" }], { shrink: async (bytes) => { shrunk++; return bytes; } });
+    const result = await runPipeline(await makePdf(2), [{ op: "protect", password: "pass1234" }, { op: "shrink", quality: 50 }, { op: "rotate", angle: 90 }], { shrink: async (bytes) => { shrunk++; return bytes; } });
     expect(shrunk).toBe(1);
     expect(result.pageCount).toBe(2);
     expect(new TextDecoder("latin1").decode(result.bytes)).toContain("/Encrypt");

@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { formatBytes, getPdfPageCount } from "@gattaimate/pdf-core";
 import { toolById, type ToolId } from "../tools";
-import { errorMessage, isImageFile, isPdfFile, readBytes } from "../lib/browser";
+import { errorMessage, isImageFile, isLockedError, isPdfFile, readBytes } from "../lib/browser";
+import { openLockedPdf } from "../lib/unlock";
 import { useRecent } from "../hooks/useRecent";
 import Dropzone from "./Dropzone";
 import DocumentViewer from "./DocumentViewer";
@@ -9,6 +10,7 @@ import Modal from "./Modal";
 import Notice, { type NoticeState } from "./Notice";
 import SizeCompare from "./SizeCompare";
 import PageHeader from "./PageHeader";
+import UnlockPrompt from "./UnlockPrompt";
 import { FileIcon } from "./icons";
 
 export type ToolContext = {
@@ -46,6 +48,7 @@ export default function SingleFileTool({ id, accept, readPages = true, actionLab
   const [file, setFile] = useState<File | null>(null);
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [unreadable, setUnreadable] = useState(false);
+  const [locked, setLocked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [notice, setNotice] = useState<NoticeState>(null);
@@ -53,35 +56,53 @@ export default function SingleFileTool({ id, accept, readPages = true, actionLab
   const [previewing, setPreviewing] = useState(false);
   const closePreview = useCallback(() => setPreviewing(false), []);
 
+  /** Read the page count. A locked PDF first gets a silent empty-password attempt (many only restrict editing), then a prompt. */
+  async function load(chosen: File, note: NoticeState = null) {
+    const token = ++loadToken.current;
+    setFile(chosen);
+    setPageCount(null);
+    setUnreadable(false);
+    setLocked(false);
+    setCompare(null);
+    setNotice(note);
+    if (!needsPages) return;
+    try {
+      const count = await getPdfPageCount(await readBytes(chosen), chosen.name);
+      if (token === loadToken.current) setPageCount(count);
+    } catch (error) {
+      if (token !== loadToken.current) return;
+      if (isLockedError(error)) {
+        try {
+          const opened = await openLockedPdf(chosen, "");
+          if (token !== loadToken.current) return;
+          await load(opened, { kind: "info", text: "This PDF only had editing restrictions, no open-password — it was opened for you. Results are saved without those restrictions." });
+        } catch {
+          if (token === loadToken.current) setLocked(true);
+        }
+        return;
+      }
+      setUnreadable(true);
+      setNotice({ kind: "error", text: errorMessage(error, "This PDF could not be read.") });
+    }
+  }
+
   async function choose(files: File[]) {
     const valid = files.filter(spec.test);
     if (valid.length === 0) {
       if (files.length) setNotice({ kind: "error", text: `That file isn't supported here. Choose ${spec.noun}.` });
       return;
     }
-    const chosen = valid[0];
-    const token = ++loadToken.current;
-    setFile(chosen);
-    setPageCount(null);
-    setUnreadable(false);
-    setCompare(null);
-    setNotice(valid.length > 1 ? { kind: "info", text: `This tool works on one file at a time — using “${chosen.name}”.` } : null);
+    await load(valid[0], valid.length > 1 ? { kind: "info", text: `This tool works on one file at a time — using “${valid[0].name}”.` } : null);
+  }
 
-    if (needsPages) {
-      try {
-        const count = await getPdfPageCount(await readBytes(chosen), chosen.name);
-        if (token === loadToken.current) setPageCount(count);
-      } catch (error) {
-        if (token !== loadToken.current) return;
-        setUnreadable(true);
-        setNotice({ kind: "error", text: errorMessage(error, "This PDF could not be read.") });
-      }
-    }
+  async function unlock(password: string) {
+    const opened = await openLockedPdf(file!, password);
+    await load(opened, { kind: "success", text: "Unlocked for this session. Your original file is unchanged, and results are saved without a password — use Protect / Unlock to lock them again." });
   }
 
   function reset() {
     loadToken.current++;
-    setFile(null); setPageCount(null); setUnreadable(false); setNotice(null); setCompare(null);
+    setFile(null); setPageCount(null); setUnreadable(false); setLocked(false); setNotice(null); setCompare(null);
   }
 
   async function submit() {
@@ -116,14 +137,15 @@ export default function SingleFileTool({ id, accept, readPages = true, actionLab
               <div className="file-name" title={file.name}>{file.name}</div>
               <div className="file-meta">
                 {formatBytes(file.size)}
-                {needsPages && !unreadable && <> · {pageCount === null ? "reading pages…" : `${pageCount} ${pageCount === 1 ? "page" : "pages"}`}</>}
+                {needsPages && !unreadable && !locked && <> · {pageCount === null ? "reading pages…" : `${pageCount} ${pageCount === 1 ? "page" : "pages"}`}</>}
               </div>
             </div>
-            <button className="btn btn-secondary btn-sm" disabled={busy || unreadable} onClick={() => setPreviewing(true)}>Preview</button>
+            <button className="btn btn-secondary btn-sm" disabled={busy || unreadable || locked} onClick={() => setPreviewing(true)}>Preview</button>
             <button className="btn btn-ghost btn-sm" disabled={busy} onClick={reset}>Change file</button>
           </section>
 
-          {!unreadable && (
+          {locked && <section className="card"><UnlockPrompt name={file.name} onUnlock={unlock} /></section>}
+          {!unreadable && !locked && (
             <section className="card options">
               {options?.({ file, pageCount })}
               <button className="btn btn-primary btn-block" data-primary disabled={busy || (needsPages && pageCount === null)} onClick={() => void submit()}>

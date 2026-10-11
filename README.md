@@ -1,6 +1,6 @@
 # GattaiMate — private PDF toolkit
 
-Merge, scan, sign, redact, organize and optimize documents. Everything runs on the user's device — no backend, no uploads.
+Merge, scan, sign, redact, organize, password-manage and optimize documents. Everything runs on the user's device — no backend, no uploads.
 
 ```
 apps/web           React + Vite web app / installable offline PWA (hash-routed, code-split)
@@ -16,16 +16,20 @@ packages/pdf-core  Shared pdf-lib engine + helpers (tested with Vitest)
 | **Scan to PDF** | – | ✅ | Camera → system crop → reorder/rotate → PDF (needs camera permission) |
 | Split · Extract · Rotate | ✅ | ✅ | Split by groups (`1-2;3-5`) or every N pages → ZIP |
 | **Organize Pages** | ✅ thumbnails + drag | ✅ list | Reorder, delete, duplicate, rotate pages |
-| **Numbers & Watermark** | ✅ | ✅ | Position, style, start number, diagonal text stamp |
 | **Sign PDF** | ✅ draw / type / upload, click to place | ✅ type / image, position presets | Visual signature (not a certificate signature) |
 | **Fill Form** | ✅ | ✅ | Text, checkbox, dropdown, radio; optional flatten |
 | **Redact** | ✅ | – | Draw boxes; those pages are flattened so text is truly removed |
 | Optimize PDF | ✅ lossless + “Smaller file” | ✅ lossless | Before/after size bars; never saves a bigger file |
 | Optimize Image | ✅ | ✅ | JPEG quality + max size |
 | **PDF to Images** | ✅ | – | JPG/PNG, 72–300 dpi, page range → ZIP |
-| **Protect / Unlock** | ✅ both | ✅ protect only | Protect = RC4-128 (light deterrent). Unlock needs the password (qpdf-wasm, web only) |
+| **Protect / Unlock / Change password** | ✅ all three | ✅ protect only | Protect = RC4-128 (light deterrent). Unlock/change need the current password (qpdf-wasm, web only) |
 | **Presets & Batch** | ✅ | ✅ | Built-in + custom recipes on many PDFs → ZIP. “Shrink” step is web only |
 | Preview | ✅ in every tool | ✅ images in-app, PDFs via viewer | |
+
+### Password-protected PDFs
+- **Web:** every tool accepts a locked PDF. It first tries an empty password (many files only restrict editing and open automatically), otherwise it asks for the password right in the tool, Merge rows and Presets & Batch. Unlocking happens in memory; the original is never changed and no password is stored. Results are saved without a password, so use Protect to lock them again.
+- **Android:** can add a password (Protect) but cannot unlock; it tells you to unlock the file in the web app first.
+- The unlock step can't guess or bypass a password — you must know it.
 
 Web extras: light/dark theme, keyboard shortcuts (`?` lists them), installable + works offline.
 Android extras: *Share → GattaiMate* from any app opens a “what do you want to do” screen.
@@ -57,7 +61,7 @@ In Expo Go everything still runs except *Share → GattaiMate* (it is skipped sa
 ## Notes and limits
 - Password-protected PDFs are rejected with a clear message in every tool except Unlock. Merging drops digital signatures; check forms/bookmarks on your own files.
 - RC4-128 protection opens in every reader but is a light deterrent — use dedicated software for highly sensitive files.
-- Watermarks, page numbers and typed signatures use built-in PDF fonts: Latin text only.
+- Typed signatures use a built-in PDF font: Latin text only.
 - pdf.js is loaded from its **legacy** build on purpose (the default build needs very new JavaScript and fails on many browsers).
 - Large PDFs use real RAM, especially on phones.
 - New PDF operations belong in `packages/pdf-core` with a test; both apps call them.
